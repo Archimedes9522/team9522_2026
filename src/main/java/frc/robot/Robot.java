@@ -26,16 +26,48 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 
+/**
+ * Main Robot class - the entry point for all robot code.
+ * 
+ * This extends LoggedRobot (from AdvantageKit) instead of TimedRobot for enhanced logging.
+ * AdvantageKit provides:
+ * - Deterministic replay: Re-run matches exactly from log files
+ * - Automatic logging: All inputs/outputs recorded for debugging
+ * - NT4 publishing: Real-time data to dashboard tools
+ * 
+ * Robot Lifecycle:
+ * 1. Constructor: Called once when robot code starts
+ * 2. robotPeriodic(): Called every 20ms regardless of mode
+ * 3. xxxInit(): Called once when entering a mode (auto, teleop, etc.)
+ * 4. xxxPeriodic(): Called every 20ms while in that mode
+ * 5. xxxExit(): Called once when leaving a mode
+ */
 public class Robot extends LoggedRobot {
+  /** The currently scheduled autonomous command */
   private Command m_autonomousCommand;
+  
+  /** NavX gyroscope for heading - connected via MXP SPI port */
   private final AHRS m_gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
+  
+  /** Container for all subsystems, commands, and button bindings */
   private RobotContainer m_robotContainer;
+  
+  /** Field visualization widget for SmartDashboard/AdvantageScope */
   private final Field2d m_field = new Field2d();
+  
+  /** Tracks selected auto name to update path preview when changed */
   private String autoName, newAutoName;
+  
+  /** Power Distribution Hub for voltage/current monitoring */
   private final PowerDistribution m_pdh = new PowerDistribution(1, ModuleType.kRev);
 
+  /**
+   * Robot constructor - called once when robot code starts.
+   * Sets up AdvantageKit logging and creates RobotContainer.
+   */
   public Robot() {
-    // Record metadata
+    // ==================== ADVANTAGEKIT METADATA ====================
+    // Record build info for debugging - helps identify which code version was deployed
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
     Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
     Logger.recordMetadata("GitSHA", BuildConstants.GIT_SHA);
@@ -53,48 +85,66 @@ public class Robot extends LoggedRobot {
         break;
     }
 
-    // Set up data receivers & replay source
+    // ==================== ADVANTAGEKIT DATA RECEIVERS ====================
+    // Configure where log data is sent based on robot mode
     switch (Constants.currentMode) {
       case REAL:
-        // Running on a real robot, log to a USB stick ("/U/logs")
+        // Real robot: Log to USB stick AND publish to NetworkTables
+        // USB logs saved to /U/logs on the roboRIO
         Logger.addDataReceiver(new WPILOGWriter());
         Logger.addDataReceiver(new NT4Publisher());
         break;
 
       case SIM:
-        // Running a physics simulator, log to NT
+        // Simulation: Only publish to NetworkTables (no file logging)
         Logger.addDataReceiver(new NT4Publisher());
         break;
 
       case REPLAY:
-        // Replaying a log, set up replay source
-        setUseTiming(false); // Run as fast as possible
+        // Replay mode: Read from log file and write analysis results
+        // Used to re-analyze matches after the fact
+        setUseTiming(false); // Run as fast as possible (not real-time)
         String logPath = LogFileUtil.findReplayLog();
         Logger.setReplaySource(new WPILOGReader(logPath));
         Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim")));
         break;
     }
 
+    // Start the AdvantageKit logger - must be called after configuring receivers
     Logger.start();
 
-    // Instantiate our RobotContainer. This will perform all our button bindings,
-    // and put our autonomous chooser on the dashboard.
+    // Create RobotContainer - this initializes all subsystems and bindings
     m_robotContainer = new RobotContainer();
     setupSmartDashboard();
   }
 
+  /**
+   * Called every 20ms regardless of robot mode.
+   * This is the main robot loop where commands are executed.
+   */
   @Override
   public void robotPeriodic() {
+    // Set high thread priority for consistent loop timing
     Threads.setCurrentThreadPriority(true, 99);
+    
+    // Run the command scheduler - this executes all active commands
+    // and calls periodic() on all subsystems
     CommandScheduler.getInstance().run();
+    
+    // Update dashboard displays
     updateSmartDashboard();
+    
+    // Reset thread priority
     Threads.setCurrentThreadPriority(false, 10);
   }
 
+  /** Called once when autonomous mode starts */
   @Override
   public void autonomousInit() {
+    // Get the selected auto from the dashboard chooser
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
+    // Schedule the autonomous command to run
     if (m_autonomousCommand != null) {
       m_autonomousCommand.schedule();
     }
@@ -102,14 +152,19 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void autonomousPeriodic() {
+    // Commands run automatically via CommandScheduler - nothing needed here
   }
 
   @Override
   public void autonomousExit() {
+    // Cleanup when leaving auto mode - nothing needed currently
   }
 
+  /** Called once when teleop mode starts */
   @Override
   public void teleopInit() {
+    // Cancel autonomous command when teleop starts
+    // This ensures driver has full control
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
@@ -117,66 +172,86 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void teleopPeriodic() {
+    // Commands run automatically via CommandScheduler - nothing needed here
   }
 
   @Override
   public void teleopExit() {
+    // Cleanup when leaving teleop mode - nothing needed currently
   }
 
+  /** Initialize SmartDashboard/Shuffleboard widgets */
   public void setupSmartDashboard() {
-    SmartDashboard.putData("Field", m_field);
-    SmartDashboard.putData("PDH", m_pdh);
-    SmartDashboard.putBoolean("Reset Pose", false);
-    SmartDashboard.putBoolean("SetX", false);
+    SmartDashboard.putData("Field", m_field);           // Field visualization
+    SmartDashboard.putData("PDH", m_pdh);               // Power distribution widget
+    SmartDashboard.putBoolean("Reset Pose", false);     // Button to reset odometry
+    SmartDashboard.putBoolean("SetX", false);           // Button to lock wheels
     SmartDashboard.putNumber("Gyro angle", m_gyro.getAngle());
     SmartDashboard.putNumber("Gyro pitch", m_gyro.getPitch());
     SmartDashboard.putNumber("Gyro roll", m_gyro.getRoll());
   }
 
+  /** Update SmartDashboard values every loop */
   private void updateSmartDashboard() {
+    // Match info
     SmartDashboard.putNumber("Match Time", Timer.getMatchTime());
     SmartDashboard.putNumber("PDH Voltage", m_pdh.getVoltage());
     SmartDashboard.putNumber("Robot Velocity", m_robotContainer.m_robotDrive.getRobotVelocity());
 
-    // Update both Field2d and Swerve widget with the same pose
+    // Update Field2d widget with current robot pose
     var robotPose = m_robotContainer.m_robotDrive.getPose();
     m_field.setRobotPose(robotPose);
 
-    // Handle pose reset button
+    // Handle "Reset Pose" button from dashboard
     if (SmartDashboard.getBoolean("Reset Pose", false)) {
       m_robotContainer.m_robotDrive.zeroHeadingCommand();
       m_robotContainer.m_robotDrive.resetOdometry(new Pose2d());
-      SmartDashboard.putBoolean("Reset Pose", false); // Reset the button
+      SmartDashboard.putBoolean("Reset Pose", false); // Reset button state
     }
 
+    // Handle "SetX" button from dashboard
     if (SmartDashboard.getBoolean("SetX", false)) {
       m_robotContainer.m_robotDrive.setXCommand();
       SmartDashboard.putBoolean("SetX", false);
     }
 
+    // Gyro telemetry for debugging
     SmartDashboard.putNumber("Gyro angle", m_gyro.getAngle());
     SmartDashboard.putNumber("Gyro pitch", m_gyro.getPitch());
     SmartDashboard.putNumber("Gyro roll", m_gyro.getRoll());
   }
 
+  /**
+   * Called every 20ms while robot is disabled.
+   * Used to preview selected auto path on the field widget.
+   */
   @Override
   public void disabledPeriodic() {
+    // Check if selected auto has changed
     newAutoName = m_robotContainer.getAutonomousCommand().getName();
     if (autoName != newAutoName) {
       autoName = newAutoName;
+      
+      // If this is a valid PathPlanner auto, display its path on the field
       if (AutoBuilder.getAllAutoNames().contains(autoName)) {
         System.out.println("Displaying " + autoName);
         try {
+          // Load all paths from the auto file
           List<PathPlannerPath> pathPlannerPaths = PathPlannerAuto.getPathGroupFromAutoFile(autoName);
+          
+          // Convert path points to poses for Field2d display
           List<Pose2d> poses = new ArrayList<>();
           for (PathPlannerPath path : pathPlannerPaths) {
             poses.addAll(
                 path.getAllPathPoints().stream()
-                    .map(
-                        point -> new Pose2d(
-                            point.position.getX(), point.position.getY(), new Rotation2d()))
+                    .map(point -> new Pose2d(
+                            point.position.getX(), 
+                            point.position.getY(), 
+                            new Rotation2d()))
                     .collect(Collectors.toList()));
           }
+          
+          // Display path on Field2d widget
           m_field.getObject("path").setPoses(poses);
         } catch (IOException | ParseException e) {
           e.printStackTrace();
@@ -185,9 +260,10 @@ public class Robot extends LoggedRobot {
     }
   }
 
+  /** Called once when test mode starts */
   @Override
   public void testInit() {
-    // Cancels all running commands at the start of test mode.
+    // Cancel all running commands for clean test environment
     CommandScheduler.getInstance().cancelAll();
   }
 }
