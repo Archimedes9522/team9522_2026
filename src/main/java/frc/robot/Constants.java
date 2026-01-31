@@ -12,9 +12,11 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.DriverStation;
 
 /**
  * Robot-wide constants organized into logical groups.
@@ -268,5 +270,100 @@ public final class Constants {
   public static final class NeoMotorConstants {
     /** NEO brushless motor free speed (no load) in RPM */
     public static final double kFreeSpeedRpm = 5676;
+  }
+
+  /**
+   * Controller constants for driver and operator input.
+   * Separated from OIConstants for cleaner organization.
+   */
+  public static final class ControllerConstants {
+    /** USB port number for the driver's Xbox controller */
+    public static final int kDriverControllerPort = 0;
+    
+    /** USB port number for the operator's Xbox controller */
+    public static final int kOperatorControllerPort = 1;
+    
+    /** Joystick deadband - inputs below this are ignored (prevents drift) */
+    public static final double kDeadband = 0.1;
+    
+    /** 
+     * Drive speed scaling (0.0 to 1.0).
+     * Start low for new drivers, increase as skill improves.
+     * 0.25 = 25% max speed, good for learning
+     * 0.5 = 50% max speed, good for precision
+     * 1.0 = full speed, for experienced drivers
+     */
+    public static final double kDriveSpeedScale = 0.5;
+    
+    /** Rotation speed scaling (0.0 to 1.0) */
+    public static final double kRotationSpeedScale = 0.5;
+    
+    /** Threshold for trigger buttons to register as pressed */
+    public static final double kTriggerThreshold = 0.2;
+  }
+
+  /**
+   * Aim points for the 2026 "Rebuilt" game field.
+   * 
+   * <p>These are field positions in meters that mechanisms can aim at.
+   * The field is 16.54m x 8.05m. Red alliance is on the right side (high X).
+   * 
+   * <p>Each enum value contains a Translation3d (X, Y, Z) in meters.
+   */
+  public enum AimPoints {
+    /** Red alliance hub (scoring target) - right side of field */
+    RED_HUB(new Translation3d(11.938, 4.034536, 1.5748)),
+    
+    /** Red alliance outpost position */
+    RED_OUTPOST(new Translation3d(15.75, 7.25, 0)),
+    
+    /** Red alliance far side position */
+    RED_FAR_SIDE(new Translation3d(15.75, 0.75, 0)),
+
+    /** Blue alliance hub (scoring target) - left side of field */
+    BLUE_HUB(new Translation3d(4.5974, 4.034536, 1.5748)),
+    
+    /** Blue alliance outpost position */
+    BLUE_OUTPOST(new Translation3d(0.75, 0.75, 0)),
+    
+    /** Blue alliance far side position */
+    BLUE_FAR_SIDE(new Translation3d(0.75, 7.25, 0));
+
+    /** The 3D position of this aim point on the field */
+    public final Translation3d value;
+
+    private AimPoints(Translation3d value) {
+      this.value = value;
+    }
+
+    /**
+     * Gets the hub position for the current alliance.
+     * @return Hub Translation3d for red or blue based on DriverStation alliance
+     */
+    public static Translation3d getAllianceHubPosition() {
+      return DriverStation.getAlliance()
+          .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_HUB.value : BLUE_HUB.value)
+          .orElse(RED_HUB.value);
+    }
+
+    /**
+     * Gets the outpost position for the current alliance.
+     * @return Outpost Translation3d for red or blue based on DriverStation alliance
+     */
+    public static Translation3d getAllianceOutpostPosition() {
+      return DriverStation.getAlliance()
+          .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_OUTPOST.value : BLUE_OUTPOST.value)
+          .orElse(RED_OUTPOST.value);
+    }
+
+    /**
+     * Gets the far side position for the current alliance.
+     * @return Far side Translation3d for red or blue based on DriverStation alliance
+     */
+    public static Translation3d getAllianceFarSidePosition() {
+      return DriverStation.getAlliance()
+          .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_FAR_SIDE.value : BLUE_FAR_SIDE.value)
+          .orElse(RED_FAR_SIDE.value);
+    }
   }
 }

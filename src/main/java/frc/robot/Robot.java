@@ -25,6 +25,7 @@ import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+import frc.robot.util.CommandsLogging;
 
 /**
  * Main Robot class - the entry point for all robot code.
@@ -113,6 +114,9 @@ public class Robot extends LoggedRobot {
     // Start the AdvantageKit logger - must be called after configuring receivers
     Logger.start();
 
+    // Initialize command logging for AdvantageScope visualization
+    CommandsLogging.initialize();
+
     // Create RobotContainer - this initializes all subsystems and bindings
     m_robotContainer = new RobotContainer();
     setupSmartDashboard();
@@ -130,6 +134,9 @@ public class Robot extends LoggedRobot {
     // Run the command scheduler - this executes all active commands
     // and calls periodic() on all subsystems
     CommandScheduler.getInstance().run();
+    
+    // Log command activity to AdvantageScope
+    CommandsLogging.logCommands();
     
     // Update dashboard displays
     updateSmartDashboard();

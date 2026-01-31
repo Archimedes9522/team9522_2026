@@ -9,14 +9,13 @@ import static frc.robot.subsystems.vision.VisionConstants.*;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.RunCommand;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.Constants.OIConstants;
-import frc.robot.subsystems.DriveSubsystem;
+import frc.robot.Constants.ControllerConstants;
+import frc.robot.controls.DriverControls;
+import frc.robot.controls.OperatorControls;
+import frc.robot.subsystems.drive.SwerveSubsystem;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
@@ -26,23 +25,31 @@ import frc.robot.subsystems.vision.VisionIOPhotonVision;
  * This follows the "declarative" Command-based paradigm where we declare WHAT the robot
  * should do, not HOW (the subsystems handle the how).
  * 
- * Key concepts:
- * - Subsystems: Hardware abstractions (drive, vision, etc.)
- * - Commands: Actions the robot performs (drive, auto routines, etc.)
- * - Triggers: Button bindings that activate commands
+ * <p>Key concepts:
+ * <ul>
+ *   <li>Subsystems: Hardware abstractions (drive, vision, etc.)</li>
+ *   <li>Commands: Actions the robot performs (drive, auto routines, etc.)</li>
+ *   <li>Triggers: Button bindings that activate commands</li>
+ * </ul>
+ * 
+ * <p>Controller bindings are handled by the controls package:
+ * <ul>
+ *   <li>{@link DriverControls} - Driver controller (port 0)</li>
+ *   <li>{@link OperatorControls} - Operator controller (port 1)</li>
+ * </ul>
  */
 public class RobotContainer {
         // ==================== SUBSYSTEMS ====================
         // Subsystems are created here and persist for the entire robot lifetime.
         // They register themselves with the CommandScheduler automatically.
         
-        /** Swerve drive subsystem - handles all driving and odometry */
-        public final DriveSubsystem m_robotDrive = new DriveSubsystem();
+        /** YAGSL-based swerve drive subsystem - handles all driving and odometry */
+        public final SwerveSubsystem m_robotDrive = new SwerveSubsystem();
         
         /**
          * Vision subsystem for AprilTag pose estimation.
          * Runs automatically via CommandScheduler.periodic() - no explicit calls needed.
-         * Sends pose updates to DriveSubsystem via the addVisionMeasurement callback.
+         * Sends pose updates to SwerveSubsystem via the addVisionMeasurement callback.
          */
         @SuppressWarnings("unused") // Field appears unused but runs via CommandScheduler
         private final Vision m_vision;
@@ -50,10 +57,6 @@ public class RobotContainer {
         // ==================== AUTO CHOOSER ====================
         /** Dropdown in SmartDashboard/Shuffleboard to select autonomous routine */
         private final SendableChooser<Command> autoChooser;
-        
-        // ==================== CONTROLLERS ====================
-        /** Driver's Xbox controller for teleop control */
-        CommandXboxController m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
 
         /**
          * Constructor - called once when robot code starts.
@@ -101,55 +104,17 @@ public class RobotContainer {
                 NamedCommands.registerCommand("setX", m_robotDrive.setXCommand());
                 NamedCommands.registerCommand("zeroHeading", m_robotDrive.zeroHeadingCommand());
                 
-                // Configure controller button bindings
-                configureButtonBindings();
+                // ==================== CONTROLLER BINDINGS ====================
+                // Controller bindings are configured in separate classes for organization.
+                // This keeps RobotContainer clean and makes bindings easier to find/modify.
+                DriverControls.configure(ControllerConstants.kDriverControllerPort, m_robotDrive);
+                OperatorControls.configure(ControllerConstants.kOperatorControllerPort);
                 
                 // ==================== AUTO CHOOSER ====================
                 // AutoBuilder.buildAutoChooser() automatically finds all .auto files
                 // in src/main/deploy/pathplanner/autos/ and creates a dropdown
                 autoChooser = AutoBuilder.buildAutoChooser("None");
                 SmartDashboard.putData("Auto Chooser", autoChooser);
-
-                // ==================== DEFAULT COMMANDS ====================
-                // Default commands run when no other command is using the subsystem.
-                // The drive's default command reads joystick inputs for teleop control.
-                m_robotDrive.setDefaultCommand(
-                                new RunCommand(
-                                                () -> m_robotDrive.drive(
-                                                                // Left stick Y = forward/backward (negated for correct direction)
-                                                                -MathUtil.applyDeadband(
-                                                                                m_driverController.getLeftY(),
-                                                                                OIConstants.kDriveDeadband)
-                                                                                * OIConstants.kDriveSpeedFactor,
-                                                                // Left stick X = strafe left/right (negated for correct direction)
-                                                                -MathUtil.applyDeadband(
-                                                                                m_driverController.getLeftX(),
-                                                                                OIConstants.kDriveDeadband)
-                                                                                * OIConstants.kDriveSpeedFactor,
-                                                                // Right stick X = rotation (negated for correct direction)
-                                                                -MathUtil.applyDeadband(
-                                                                                m_driverController.getRightX(),
-                                                                                OIConstants.kDriveDeadband),
-                                                                true), // true = field-relative driving
-                                                m_robotDrive));
-        }
-
-        /**
-         * Configure controller button bindings.
-         * Each binding maps a button/trigger to a command.
-         * 
-         * Common trigger types:
-         * - onTrue(): Run once when button is first pressed
-         * - whileTrue(): Run continuously while button is held
-         * - onFalse(): Run once when button is released
-         * - toggleOnTrue(): Toggle command on/off each press
-         */
-        private void configureButtonBindings() {
-                // Left Stick Button (L3) -> Lock wheels in X pattern to prevent pushing
-                m_driverController.leftStick().whileTrue(m_robotDrive.setXCommand());
-
-                // Start Button -> Reset gyro heading (use when robot is facing away from driver)
-                m_driverController.start().onTrue(m_robotDrive.zeroHeadingCommand());
         }
 
         /**
