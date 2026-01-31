@@ -42,43 +42,88 @@ public class VisionConstants {
 
   // === CAMERA CONFIGURATION ===
   // Camera names MUST match the names configured in PhotonVision exactly!
-  /** Name of the front-facing camera (as configured in PhotonVision) */
-  public static String camera0Name = "frontCamera";
+  // Currently using SINGLE CAMERA setup: Rubik Pi 3 mounted at back-left.
   
-  /** Name of the back-facing camera (as configured in PhotonVision) */
-  public static String camera1Name = "backCamera";
+  /** 
+   * Name of the primary camera (Rubik Pi 3 with PhotonVision).
+   * This MUST match the camera name configured in the PhotonVision web interface.
+   * Default PhotonVision name is often "OV9281" or "Arducam_OV9281" - check your setup!
+   * 
+   * This is the ONLY camera currently in use.
+   */
+  public static String camera0Name = "back_camera";
+  
+  /** 
+   * Name of the secondary camera (Raspberry Pi 5) - NOT CURRENTLY USED.
+   * This is reserved for future expansion if you add a second camera.
+   * Currently disabled in RobotContainer (uses empty VisionIO).
+   */
+  public static String camera1Name = "front_camera";
 
   // === ROBOT TO CAMERA TRANSFORMS ===
   // These describe where each camera is mounted relative to robot center.
   // Getting these right is CRITICAL for accurate pose estimation!
   //
-  // Coordinate system:
+  // Coordinate system (WPILib standard):
   //   X: positive = forward (toward front of robot)
   //   Y: positive = left (when looking from behind robot)
   //   Z: positive = up (toward ceiling)
-  //   Rotation: positive yaw = counter-clockwise (when viewed from above)
+  //
+  // Rotation order: Roll, Pitch, Yaw
+  //   Roll: rotation around X (forward) axis
+  //   Pitch: rotation around Y (left) axis - POSITIVE = camera tilted UP
+  //   Yaw: rotation around Z (up) axis - 0 = forward, π = backward
   
   /**
-   * Front camera position and orientation relative to robot center.
-   * This camera faces forward and is offset slightly to the right.
+   * Primary camera (Rubik Pi 3) - Back-left, facing backward, tilted UP.
+   * 
+   * Mounting position based on CranberryAlarm (CA26) robot:
+   * - Located at back-left corner of robot
+   * - Facing backward (away from front of robot)
+   * - Tilted UP 21° to see elevated AprilTags on hub/scoring structures
+   * 
+   * This position is ideal for:
+   * - Seeing AprilTags when backing up to score
+   * - Viewing elevated field elements (hub, etc.)
+   * - Keeping camera out of the way of front mechanisms
+   * 
+   * MEASURE THESE VALUES ON YOUR ROBOT AND UPDATE IF DIFFERENT!
    */
   public static Transform3d robotToCamera0 =
       new Transform3d(
-          Units.inchesToMeters(14),  // X: 14 inches forward from robot center
-          Units.inchesToMeters(-3),  // Y: 3 inches right of center (negative = right)
-          Units.inchesToMeters(7.5), // Z: 7.5 inches up from floor
-          new Rotation3d(0.0, 0.0, 0.0)); // Yaw = 0 means facing forward
+          Units.inchesToMeters(-11),  // X: 11 inches behind robot center
+          Units.inchesToMeters(9),    // Y: 9 inches LEFT of center (positive = left)
+          Units.inchesToMeters(12.75),// Z: 12.75 inches up from floor
+          new Rotation3d(
+              0.0,                              // Roll: 0 (camera is level side-to-side)
+              Units.degreesToRadians(21),       // Pitch: +21° (tilted UP 21 degrees)
+              Math.PI));                        // Yaw: π (180°, facing backward)
 
   /**
-   * Back camera position and orientation relative to robot center.
-   * This camera faces backward (rotated 180 degrees) and is offset to the left.
+   * Secondary camera (Raspberry Pi 5) - OPTIONAL, disabled by default.
+   * 
+   * If you add a second camera later, consider mounting it on the FRONT
+   * facing forward to see AprilTags when approaching targets.
+   * 
+   * Suggested front-mount position:
+   * - X: +12 inches (front of robot)
+   * - Y: 0 inches (centered)
+   * - Z: 14 inches (elevated)
+   * - Pitch: -20° (tilted down to see floor-level tags)
+   * - Yaw: 0° (facing forward)
+   * 
+   * CURRENTLY NOT USED - keeping for future expansion.
+   * To enable: Update RobotContainer to use VisionIOPhotonVision for camera1.
    */
   public static Transform3d robotToCamera1 =
       new Transform3d(
-          Units.inchesToMeters(-14), // X: 14 inches backward from robot center
-          Units.inchesToMeters(3),   // Y: 3 inches left of center (positive = left)
-          Units.inchesToMeters(7.5), // Z: 7.5 inches up from floor
-          new Rotation3d(0.0, 0.0, Math.PI)); // Yaw = π (180°) means facing backward
+          Units.inchesToMeters(12),  // X: 12 inches FORWARD from robot center
+          Units.inchesToMeters(0),   // Y: Centered
+          Units.inchesToMeters(14),  // Z: 14 inches up from floor
+          new Rotation3d(
+              0.0,                              // Roll: 0
+              Units.degreesToRadians(-20),      // Pitch: -20° (tilted DOWN)
+              0.0));                            // Yaw: 0 (facing FORWARD)
 
   // === POSE FILTERING THRESHOLDS ===
   // These help filter out bad pose estimates from the cameras

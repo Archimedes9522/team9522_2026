@@ -41,15 +41,15 @@ import org.littletonrobotics.junction.Logger;
  * <ol>
  *   <li>Each robot loop, cameras report AprilTag detections via VisionIO</li>
  *   <li>This subsystem filters out obviously bad poses (too far from field, too high Z, etc.)</li>
- *   <li>Good poses are sent to DriveSubsystem via the VisionConsumer callback</li>
- *   <li>DriveSubsystem fuses vision with odometry using SwerveDrivePoseEstimator</li>
+ *   <li>Good poses are sent to SwerveSubsystem via the VisionConsumer callback</li>
+ *   <li>SwerveSubsystem fuses vision with odometry using its pose estimator</li>
  * </ol>
  * 
  * <p><b>Note:</b> This subsystem appears "unused" in RobotContainer, but it runs
  * automatically because it extends SubsystemBase - the CommandScheduler calls
  * periodic() every robot loop.
  * 
- * @see DriveSubsystem#addVisionMeasurement For where vision data is consumed
+ * @see SwerveSubsystem#addVisionMeasurement For where vision data is consumed
  * @see VisionConstants For tuning parameters
  */
 public class Vision extends SubsystemBase {
@@ -70,7 +70,7 @@ public class Vision extends SubsystemBase {
    * Creates a new Vision subsystem.
    * 
    * @param consumer Callback function that receives accepted pose observations.
-   *                 Typically DriveSubsystem::addVisionMeasurement
+   *                 Typically SwerveSubsystem::addVisionMeasurement
    * @param io One or more VisionIO implementations (one per camera)
    */
   public Vision(VisionConsumer consumer, VisionIO... io) {
@@ -258,7 +258,7 @@ public class Vision extends SubsystemBase {
    * Functional interface for consuming vision measurements.
    * 
    * <p>This allows the Vision subsystem to send pose updates without
-   * directly depending on DriveSubsystem (looser coupling).
+   * directly depending on SwerveSubsystem (looser coupling).
    * 
    * <p>In RobotContainer, this is typically connected like:
    * <pre>
