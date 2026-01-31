@@ -69,15 +69,19 @@ public class RobotContainer {
                 // - REAL: Actual PhotonVision cameras
                 // - SIM: Simulated cameras (or dummy for now)
                 // - REPLAY: Dummy IO for log replay analysis
+                //
+                // Currently using SINGLE CAMERA setup (Rubik Pi 3 on front).
+                // To add a second camera later, replace the empty VisionIO() with:
+                //   new VisionIOPhotonVision(camera1Name, robotToCamera1)
                 switch (Constants.currentMode) {
                         case REAL:
-                                // Real robot - create PhotonVision IO for each camera
+                                // Real robot - Rubik Pi 3 camera on front
                                 // The method reference m_robotDrive::addVisionMeasurement connects
                                 // vision pose estimates to the drive's pose estimator
                                 m_vision = new Vision(
                                         m_robotDrive::addVisionMeasurement,
                                         new VisionIOPhotonVision(camera0Name, robotToCamera0),
-                                        new VisionIOPhotonVision(camera1Name, robotToCamera1));
+                                        new VisionIO() {});  // Second camera disabled - add later if needed
                                 break;
 
                         case SIM:
