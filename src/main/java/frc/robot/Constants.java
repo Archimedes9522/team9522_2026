@@ -82,12 +82,13 @@ public final class Constants {
 
     // === CHASSIS DIMENSIONS ===
     // These measurements are between wheel CENTERS, not frame edges
+    // Frame size is 27.5" (front-to-back) x 25.5" (side-to-side), with 3.5" inset to wheel centers
     
-    /** Distance between left and right wheel centers (side to side) */
-    public static final double kTrackWidth = Units.inchesToMeters(21.5);
+    /** Distance between left and right wheel centers (side to side) - frame is 25.5" wide */
+    public static final double kTrackWidth = Units.inchesToMeters(22);
     
-    /** Distance between front and back wheel centers (front to back) */
-    public static final double kWheelBase = Units.inchesToMeters(21.5);
+    /** Distance between front and back wheel centers (front to back) - frame is 27.5" long */
+    public static final double kWheelBase = Units.inchesToMeters(24);
     
     /**
      * Kinematics object that converts chassis speeds to individual module states.
