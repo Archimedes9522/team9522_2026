@@ -37,6 +37,7 @@ import frc.robot.subsystems.mechanisms.TurretSubsystem;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
+import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 
 /**
  * RobotContainer is where we define all subsystems, commands, and button bindings.
@@ -135,12 +136,16 @@ public class RobotContainer {
                                 break;
 
                         case SIM:
-                                // Simulation - use empty IO implementations
-                                // TODO: Add VisionIOPhotonVisionSim for full simulation support
+                                // Simulation - use simulated PhotonVision cameras
+                                // These generate fake AprilTag detections based on simulated robot pose
+                                // Mimics CA26's Limelight MegaTag2 behavior using PhotonVision multi-tag
                                 m_vision = new Vision(
                                         m_robotDrive::addVisionMeasurement,
-                                        new VisionIO() {},
-                                        new VisionIO() {});
+                                        new VisionIOPhotonVisionSim(
+                                                camera0Name, 
+                                                robotToCamera0,
+                                                m_robotDrive::getPose),
+                                        new VisionIO() {});  // Second camera disabled
                                 break;
 
                         default:
