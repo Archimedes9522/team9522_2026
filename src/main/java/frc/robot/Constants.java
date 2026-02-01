@@ -283,6 +283,9 @@ public final class Constants {
     /** USB port number for the operator's Xbox controller */
     public static final int kOperatorControllerPort = 1;
     
+    /** USB port number for the pose adjustment controller (for testing/debugging) */
+    public static final int kPoseControllerPort = 2;
+    
     /** Joystick deadband - inputs below this are ignored (prevents drift) */
     public static final double kDeadband = 0.1;
     

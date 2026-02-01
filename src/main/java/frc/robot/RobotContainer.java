@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Inches;
 import static frc.robot.subsystems.vision.VisionConstants.*;
 
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -13,12 +14,18 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ControllerConstants;
 import frc.robot.controls.DriverControls;
 import frc.robot.controls.OperatorControls;
+import frc.robot.controls.PoseControls;
 import frc.robot.subsystems.drive.SwerveSubsystem;
 import frc.robot.subsystems.mechanisms.HoodSubsystem;
 import frc.robot.subsystems.mechanisms.HopperSubsystem;
@@ -93,6 +100,10 @@ public class RobotContainer {
         @SuppressWarnings("unused") // Field appears unused but runs via CommandScheduler
         private final Vision m_vision;
         
+        // ==================== ZONE DETECTION ====================
+        /** Current alliance for change detection */
+        private Alliance currentAlliance = Alliance.Red;
+        
         // ==================== AUTO CHOOSER ====================
         /** Dropdown in SmartDashboard/Shuffleboard to select autonomous routine */
         private final SendableChooser<Command> autoChooser;
@@ -164,6 +175,36 @@ public class RobotContainer {
                         ControllerConstants.kOperatorControllerPort, 
                         m_robotDrive, 
                         m_superstructure);
+                PoseControls.configure(
+                        ControllerConstants.kPoseControllerPort,
+                        m_robotDrive);
+                
+                // ==================== ZONE-BASED AUTO-AIM ====================
+                // Initialize alliance and set up triggers for automatic aim point switching
+                // based on where the robot is on the field.
+                
+                // Initialize alliance (default to red if not present)
+                onAllianceChanged(getAlliance());
+                
+                // Set up trigger to detect alliance changes (e.g., when connected to FMS)
+                new Trigger(() -> getAlliance() != currentAlliance)
+                        .onTrue(Commands.runOnce(() -> onAllianceChanged(getAlliance()))
+                                .ignoringDisable(true));
+                
+                // Triggers for auto aim point changes based on field position
+                // When robot crosses zone boundaries, aim point updates automatically
+                new Trigger(() -> isInAllianceZone())
+                        .onChange(Commands.runOnce(() -> onZoneChanged())
+                                .ignoringDisable(true));
+                
+                new Trigger(() -> isOnAllianceOutpostSide())
+                        .onChange(Commands.runOnce(() -> onZoneChanged())
+                                .ignoringDisable(true));
+                
+                // Silence joystick warnings in simulation
+                if (!Robot.isReal()) {
+                        DriverStation.silenceJoystickConnectionWarning(true);
+                }
                 
                 // ==================== AUTO CHOOSER ====================
                 // AutoBuilder.buildAutoChooser() automatically finds all .auto files
@@ -220,10 +261,119 @@ public class RobotContainer {
         }
         
         /**
+         * Sets the aim point for the superstructure.
+         * @param aimPoint The target location
+         */
+        public void setAimPoint(Translation3d aimPoint) {
+                m_superstructure.setAimPoint(aimPoint);
+        }
+        
+        /**
          * Gets the superstructure subsystem.
          * @return The Superstructure
          */
         public Superstructure getSuperstructure() {
                 return m_superstructure;
+        }
+        
+        // ==================== ZONE DETECTION ====================
+        
+        /**
+         * Gets the current alliance.
+         * @return Current alliance, defaults to Red if not connected to FMS
+         */
+        private Alliance getAlliance() {
+                return DriverStation.getAlliance().orElse(Alliance.Red);
+        }
+        
+        /**
+         * Checks if the robot is in its alliance zone (near its own driver station).
+         * 
+         * <p>Alliance zones:
+         * <ul>
+         *   <li>Blue: X less than 182 inches (near blue driver station at X=0)</li>
+         *   <li>Red: X greater than 469 inches (near red driver station at X=16.5m)</li>
+         * </ul>
+         * 
+         * @return true if robot is in its alliance zone
+         */
+        private boolean isInAllianceZone() {
+                Alliance alliance = getAlliance();
+                Distance blueZone = Inches.of(182);
+                Distance redZone = Inches.of(469);
+                
+                if (alliance == Alliance.Blue && m_robotDrive.getPose().getMeasureX().lt(blueZone)) {
+                        return true;
+                } else if (alliance == Alliance.Red && m_robotDrive.getPose().getMeasureX().gt(redZone)) {
+                        return true;
+                }
+                
+                return false;
+        }
+        
+        /**
+         * Checks if the robot is on the alliance's outpost side of the field.
+         * 
+         * <p>The field is divided in half along the Y axis:
+         * <ul>
+         *   <li>Blue outpost side: Y less than midline (158.84 inches)</li>
+         *   <li>Red outpost side: Y greater than midline</li>
+         * </ul>
+         * 
+         * @return true if robot is on the outpost side for its alliance
+         */
+        private boolean isOnAllianceOutpostSide() {
+                Alliance alliance = getAlliance();
+                Distance midLine = Inches.of(158.84375);
+                
+                if (alliance == Alliance.Blue && m_robotDrive.getPose().getMeasureY().lt(midLine)) {
+                        return true;
+                } else if (alliance == Alliance.Red && m_robotDrive.getPose().getMeasureY().gt(midLine)) {
+                        return true;
+                }
+                
+                return false;
+        }
+        
+        /**
+         * Called when the robot crosses a zone boundary.
+         * Updates the aim point based on current field position.
+         * 
+         * <p>Logic:
+         * <ul>
+         *   <li>In alliance zone → aim at alliance hub</li>
+         *   <li>Not in zone, on outpost side → aim at outpost</li>
+         *   <li>Not in zone, on far side → aim at far side target</li>
+         * </ul>
+         */
+        private void onZoneChanged() {
+                if (isInAllianceZone()) {
+                        m_superstructure.setAimPoint(Constants.AimPoints.getAllianceHubPosition());
+                } else {
+                        if (isOnAllianceOutpostSide()) {
+                                m_superstructure.setAimPoint(Constants.AimPoints.getAllianceOutpostPosition());
+                        } else {
+                                m_superstructure.setAimPoint(Constants.AimPoints.getAllianceFarSidePosition());
+                        }
+                }
+        }
+        
+        /**
+         * Called when alliance color changes (e.g., when connected to FMS).
+         * Updates the current alliance and resets aim point to hub.
+         * 
+         * @param alliance The new alliance color
+         */
+        private void onAllianceChanged(Alliance alliance) {
+                currentAlliance = alliance;
+                
+                // Update aim point based on alliance
+                if (alliance == Alliance.Blue) {
+                        m_superstructure.setAimPoint(Constants.AimPoints.BLUE_HUB.value);
+                } else {
+                        m_superstructure.setAimPoint(Constants.AimPoints.RED_HUB.value);
+                }
+                
+                System.out.println("Alliance changed to: " + alliance);
         }
 }
