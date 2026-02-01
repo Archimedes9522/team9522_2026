@@ -6,6 +6,8 @@ package frc.robot.subsystems.drive;
 
 import java.io.File;
 
+import org.littletonrobotics.junction.Logger;
+
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
@@ -13,7 +15,9 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
@@ -78,9 +82,17 @@ public class SwerveSubsystem extends SubsystemBase {
     // YAGSL reads JSON config files from the deploy/swerve directory
     File swerveJsonDirectory = new File(Filesystem.getDeployDirectory(), "swerve");
     
+    // Starting pose for simulation - center of field to avoid MapleSim terrain issues
+    // This only affects simulation; on real robot, odometry starts at this pose
+    // but you can reset it via resetOdometry() or vision correction
+    // 
+    // For autonomous, your auto routine should set the correct starting pose
+    // based on where you actually place the robot on the field.
+    Pose2d simulationStartPose = new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0));
+    
     try {
-      // Parse JSON files and create SwerveDrive object
-      swerveDrive = new SwerveParser(swerveJsonDirectory).createSwerveDrive(maximumSpeed);
+      // Parse JSON files and create SwerveDrive object with starting pose
+      swerveDrive = new SwerveParser(swerveJsonDirectory).createSwerveDrive(maximumSpeed, simulationStartPose);
     } catch (Exception e) {
       throw new RuntimeException("Failed to create SwerveDrive from JSON config", e);
     }
@@ -135,6 +147,21 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Pose2d getPose() {
     return swerveDrive.getPose();
+  }
+  
+  /**
+   * Gets the current robot pose as a 3D pose.
+   * Z is always 0 (ground level), pitch and roll are always 0.
+   * @return The robot's pose in 3D space
+   */
+  public Pose3d getPose3d() {
+    Pose2d pose2d = getPose();
+    return new Pose3d(
+        pose2d.getX(),
+        pose2d.getY(),
+        0.0,  // On the ground
+        new Rotation3d(0, 0, pose2d.getRotation().getRadians())
+    );
   }
   
   /**
@@ -386,6 +413,22 @@ public class SwerveSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     // YAGSL handles odometry updates internally
-    // Additional periodic updates can be added here if needed
+    
+    // Log robot pose for AdvantageScope 3D visualization
+    Logger.recordOutput("Odometry/Robot", getPose());
+    Logger.recordOutput("Odometry/Robot3d", getPose3d());
+    
+    // Log module states for visualization
+    SwerveModuleState[] states = getModuleStates();
+    Logger.recordOutput("SwerveStates/Measured", states);
+    
+    // Log chassis speeds
+    ChassisSpeeds speeds = getRobotRelativeSpeeds();
+    Logger.recordOutput("SwerveStates/VelocityX", speeds.vxMetersPerSecond);
+    Logger.recordOutput("SwerveStates/VelocityY", speeds.vyMetersPerSecond);
+    Logger.recordOutput("SwerveStates/AngularVelocity", Math.toDegrees(speeds.omegaRadiansPerSecond));
+    
+    // Log heading
+    Logger.recordOutput("Odometry/Heading", getHeading());
   }
 }

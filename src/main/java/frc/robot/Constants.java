@@ -366,4 +366,190 @@ public final class Constants {
           .orElse(RED_FAR_SIDE.value);
     }
   }
+
+  // ==================== MECHANISM CONSTANTS ====================
+  // These constants define the CAN IDs and parameters for game mechanisms.
+  // Adjust based on your actual robot hardware.
+
+  /**
+   * Shooter mechanism constants.
+   * 
+   * <p>The shooter uses dual NEO motors with 4" wheels in a 1:1 ratio
+   * to launch FUEL balls at the hub.
+   */
+  public static final class ShooterConstants {
+    /** CAN ID for the leader (left) shooter motor */
+    public static final int kLeaderMotorId = 15;
+    
+    /** CAN ID for the follower (right) shooter motor */
+    public static final int kFollowerMotorId = 16;
+    
+    /** Shooter wheel diameter in inches */
+    public static final double kWheelDiameterInches = 4.0;
+    
+    /** Gear ratio from motor to wheel (1:1 = direct drive) */
+    public static final double kGearRatio = 1.0;
+    
+    /** Maximum allowed shooter speed in RPM */
+    public static final double kMaxSpeedRpm = 6000;
+    
+    /** Default shooting speed in RPM */
+    public static final double kShootingSpeedRpm = 5500;
+    
+    /** Speed tolerance for "at setpoint" detection in RPM */
+    public static final double kSpeedToleranceRpm = 100;
+    
+    /** Motor current limit in amps */
+    public static final int kCurrentLimitAmps = 40;
+    
+    // PID gains for velocity control (tune these on actual robot)
+    public static final double kP = 0.00936;
+    public static final double kI = 0.0;
+    public static final double kD = 0.0;
+    
+    // Feedforward gains (tune with SysId)
+    public static final double kS = 0.191;  // static friction voltage
+    public static final double kV = 0.11858; // velocity gain (V per rad/s)
+    public static final double kA = 0.0;     // acceleration gain
+  }
+
+  /**
+   * Turret mechanism constants.
+   * 
+   * <p>The turret rotates the shooter ±90° to aim at the hub.
+   * Uses a NEO motor with a 40:1 reduction and CANcoder for absolute position.
+   */
+  public static final class TurretConstants {
+    /** CAN ID for the turret motor */
+    public static final int kMotorId = 17;
+    
+    /** CAN ID for the CANcoder (absolute encoder) */
+    public static final int kEncoderId = 18;
+    
+    /** Total gear reduction from motor to turret output */
+    public static final double kGearRatio = 40.0;
+    
+    /** Soft limit for turret rotation in degrees (positive = clockwise) */
+    public static final double kMaxAngleDegrees = 90.0;
+    
+    /** Soft limit for turret rotation in degrees (negative = counter-clockwise) */
+    public static final double kMinAngleDegrees = -90.0;
+    
+    /** Motor current limit in amps */
+    public static final int kCurrentLimitAmps = 30;
+    
+    // PID gains for position control
+    public static final double kP = 0.1;
+    public static final double kI = 0.0;
+    public static final double kD = 0.0;
+  }
+
+  /**
+   * Hood mechanism constants.
+   * 
+   * <p>The hood adjusts the shooter angle to control trajectory.
+   * Uses a NEO 550 with a 50:1 reduction.
+   */
+  public static final class HoodConstants {
+    /** CAN ID for the hood motor */
+    public static final int kMotorId = 19;
+    
+    /** Total gear reduction from motor to hood output */
+    public static final double kGearRatio = 50.0;
+    
+    /** Minimum hood angle in degrees (flat) */
+    public static final double kMinAngleDegrees = 0.0;
+    
+    /** Maximum hood angle in degrees (steep) */
+    public static final double kMaxAngleDegrees = 60.0;
+    
+    /** Default stowed angle in degrees */
+    public static final double kStowedAngleDegrees = 0.0;
+    
+    /** Motor current limit in amps */
+    public static final int kCurrentLimitAmps = 20;
+    
+    // PID gains for position control
+    public static final double kP = 0.1;
+    public static final double kI = 0.0;
+    public static final double kD = 0.0;
+  }
+
+  /**
+   * Intake mechanism constants.
+   * 
+   * <p>The intake has a pivot arm and rollers to collect FUEL from the floor.
+   */
+  public static final class IntakeConstants {
+    /** CAN ID for the intake pivot motor */
+    public static final int kPivotMotorId = 20;
+    
+    /** CAN ID for the intake roller motor */
+    public static final int kRollerMotorId = 21;
+    
+    /** Pivot gear reduction */
+    public static final double kPivotGearRatio = 5.0 * 5.0 * (60.0 / 18.0); // 83.33:1
+    
+    /** Deployed angle in degrees (down to ground) */
+    public static final double kDeployedAngleDegrees = 90.0;
+    
+    /** Stowed angle in degrees (inside frame perimeter) */
+    public static final double kStowedAngleDegrees = 0.0;
+    
+    /** Roller intake speed (duty cycle, -1 to 1) */
+    public static final double kIntakeSpeed = 0.8;
+    
+    /** Roller outtake speed (duty cycle, -1 to 1) */
+    public static final double kOuttakeSpeed = -0.5;
+    
+    /** Motor current limits in amps */
+    public static final int kPivotCurrentLimitAmps = 30;
+    public static final int kRollerCurrentLimitAmps = 25;
+    
+    // PID gains for pivot position control
+    public static final double kPivotP = 0.1;
+    public static final double kPivotI = 0.0;
+    public static final double kPivotD = 0.0;
+  }
+
+  /**
+   * Hopper mechanism constants.
+   * 
+   * <p>The hopper stores FUEL balls between intake and shooter.
+   */
+  public static final class HopperConstants {
+    /** CAN ID for the hopper motor */
+    public static final int kMotorId = 22;
+    
+    /** DIO port for the entry beam break sensor */
+    public static final int kEntryBeamBreakPort = 0;
+    
+    /** DIO port for the exit beam break sensor */
+    public static final int kExitBeamBreakPort = 1;
+    
+    /** Feed speed (duty cycle, -1 to 1) */
+    public static final double kFeedSpeed = 0.6;
+    
+    /** Reverse speed for unjamming (duty cycle, -1 to 1) */
+    public static final double kReverseSpeed = -0.4;
+    
+    /** Motor current limit in amps */
+    public static final int kCurrentLimitAmps = 20;
+  }
+
+  /**
+   * Kicker mechanism constants.
+   * 
+   * <p>The kicker feeds FUEL from the hopper into the shooter.
+   */
+  public static final class KickerConstants {
+    /** CAN ID for the kicker motor */
+    public static final int kMotorId = 23;
+    
+    /** Feed speed (duty cycle, -1 to 1) */
+    public static final double kFeedSpeed = 1.0;
+    
+    /** Motor current limit in amps */
+    public static final int kCurrentLimitAmps = 20;
+  }
 }

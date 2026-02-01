@@ -5,7 +5,9 @@ import com.pathplanner.lib.commands.PathPlannerAuto;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.studica.frc.AHRS;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.ironmaple.simulation.SimulatedArena;
 import org.json.simple.parser.ParseException;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedRobot;
@@ -26,6 +29,7 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import frc.robot.util.CommandsLogging;
+import frc.robot.util.maplesim.Arena2026Rebuilt;
 
 /**
  * Main Robot class - the entry point for all robot code.
@@ -61,6 +65,9 @@ public class Robot extends LoggedRobot {
   
   /** Power Distribution Hub for voltage/current monitoring */
   private final PowerDistribution m_pdh = new PowerDistribution(1, ModuleType.kRev);
+  
+  /** MapleSim arena for 2026 "Rebuilt" game simulation */
+  private SimulatedArena m_arena;
 
   /**
    * Robot constructor - called once when robot code starts.
@@ -138,6 +145,12 @@ public class Robot extends LoggedRobot {
     // Log command activity to AdvantageScope
     CommandsLogging.logCommands();
     
+    // Log field simulation data for AdvantageScope 3D visualization
+    Logger.recordOutput("FieldSimulation/RobotPose", m_robotContainer.getRobotPose());
+    Logger.recordOutput("FieldSimulation/AimDirection", m_robotContainer.getAimDirection());
+    Logger.recordOutput("FieldSimulation/AimTarget", 
+        new Pose3d(m_robotContainer.getAimPoint(), Rotation3d.kZero));
+    
     // Update dashboard displays
     updateSmartDashboard();
     
@@ -148,6 +161,9 @@ public class Robot extends LoggedRobot {
   /** Called once when autonomous mode starts */
   @Override
   public void autonomousInit() {
+    // Update aim point based on current alliance
+    m_robotContainer.getSuperstructure().updateAimPointForAlliance();
+    
     // Get the selected auto from the dashboard chooser
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
@@ -170,6 +186,9 @@ public class Robot extends LoggedRobot {
   /** Called once when teleop mode starts */
   @Override
   public void teleopInit() {
+    // Update aim point based on current alliance
+    m_robotContainer.getSuperstructure().updateAimPointForAlliance();
+    
     // Cancel autonomous command when teleop starts
     // This ensures driver has full control
     if (m_autonomousCommand != null) {
@@ -272,5 +291,64 @@ public class Robot extends LoggedRobot {
   public void testInit() {
     // Cancel all running commands for clean test environment
     CommandScheduler.getInstance().cancelAll();
+  }
+
+  @Override
+  public void testPeriodic() {
+    // Test mode periodic - nothing needed currently
+  }
+
+  // ==================== SIMULATION METHODS ====================
+  
+  /**
+   * Called once when simulation mode starts.
+   * Sets up the MapleSim arena for the 2026 "Rebuilt" game.
+   */
+  @Override
+  public void simulationInit() {
+    // Shut down any existing arena instance to release physics bodies
+    SimulatedArena.getInstance().shutDown();
+
+    // Create and register the 2026 Rebuilt arena
+    // Parameter: addRampCollider
+    //   true  = Ramps around hubs are solid obstacles (can't drive on them)
+    //   false = Only the hub itself is a collider (can drive on ramps)
+    // 
+    // If you're hitting invisible walls, try setting to false - the ramp 
+    // colliders extend 217 inches which might not match AdvantageScope's field
+    boolean addRampCollider = false;  
+    
+    SimulatedArena.overrideInstance(new Arena2026Rebuilt(addRampCollider));
+    m_arena = SimulatedArena.getInstance();
+
+    // Add the swerve drivetrain to the physics simulation
+    // YAGSL's SwerveDriveSimulation wraps the MapleSim drivetrain
+    var swerveDrive = m_robotContainer.m_robotDrive.getSwerveDrive();
+    var mapleSimDriveOpt = swerveDrive.getMapleSimDrive();
+    if (mapleSimDriveOpt.isPresent()) {
+      // YAGSL handles drivetrain registration internally when using maple-sim
+      // The SwerveDriveSimulation is YAGSL's wrapper, not MapleSim's type directly
+      System.out.println("MapleSim: YAGSL SwerveDriveSimulation available");
+      System.out.println("MapleSim: Drivetrain type: " + mapleSimDriveOpt.get().getClass().getName());
+    } else {
+      System.out.println("MapleSim: WARNING - No drivetrain simulation available. Running in simulation may have limited physics.");
+    }
+  }
+
+  /**
+   * Called every 20ms during simulation.
+   * Updates the MapleSim physics simulation.
+   */
+  @Override
+  public void simulationPeriodic() {
+    if (m_arena != null) {
+      m_arena.simulationPeriodic();
+      
+      // Log game piece positions for AdvantageScope 3D visualization
+      Pose3d[] fuelPoses = m_arena.getGamePiecesArrayByType("Fuel");
+      if (fuelPoses != null && fuelPoses.length > 0) {
+        Logger.recordOutput("FieldSimulation/FuelPoses", fuelPoses);
+      }
+    }
   }
 }

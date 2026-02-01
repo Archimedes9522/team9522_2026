@@ -9,6 +9,10 @@ import static frc.robot.subsystems.vision.VisionConstants.*;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -16,6 +20,13 @@ import frc.robot.Constants.ControllerConstants;
 import frc.robot.controls.DriverControls;
 import frc.robot.controls.OperatorControls;
 import frc.robot.subsystems.drive.SwerveSubsystem;
+import frc.robot.subsystems.mechanisms.HoodSubsystem;
+import frc.robot.subsystems.mechanisms.HopperSubsystem;
+import frc.robot.subsystems.mechanisms.IntakeSubsystem;
+import frc.robot.subsystems.mechanisms.KickerSubsystem;
+import frc.robot.subsystems.mechanisms.ShooterSubsystem;
+import frc.robot.subsystems.mechanisms.Superstructure;
+import frc.robot.subsystems.mechanisms.TurretSubsystem;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
@@ -45,6 +56,34 @@ public class RobotContainer {
         
         /** YAGSL-based swerve drive subsystem - handles all driving and odometry */
         public final SwerveSubsystem m_robotDrive = new SwerveSubsystem();
+        
+        // ==================== MECHANISM SUBSYSTEMS ====================
+        // Game-specific mechanisms for 2026 "Rebuilt" game
+        
+        /** Dual flywheel shooter for launching FUEL */
+        private final ShooterSubsystem m_shooter = new ShooterSubsystem();
+        
+        /** Turret for aiming shooter ±90° */
+        private final TurretSubsystem m_turret = new TurretSubsystem();
+        
+        /** Hood for adjusting shot trajectory */
+        private final HoodSubsystem m_hood = new HoodSubsystem();
+        
+        /** Ground intake with pivot arm */
+        private final IntakeSubsystem m_intake = new IntakeSubsystem();
+        
+        /** Ball storage and queuing */
+        private final HopperSubsystem m_hopper = new HopperSubsystem();
+        
+        /** Final feed stage to shooter */
+        private final KickerSubsystem m_kicker = new KickerSubsystem();
+        
+        /** 
+         * Superstructure coordinates all mechanisms for unified control.
+         * Provides combined commands for shooting, feeding, and aiming.
+         */
+        private final Superstructure m_superstructure = new Superstructure(
+                m_shooter, m_turret, m_hood, m_intake, m_hopper, m_kicker);
         
         /**
          * Vision subsystem for AprilTag pose estimation.
@@ -108,11 +147,23 @@ public class RobotContainer {
                 NamedCommands.registerCommand("setX", m_robotDrive.setXCommand());
                 NamedCommands.registerCommand("zeroHeading", m_robotDrive.zeroHeadingCommand());
                 
+                // Register mechanism commands for autonomous paths
+                NamedCommands.registerCommand("shoot", m_superstructure.shootCommand());
+                NamedCommands.registerCommand("intake", m_superstructure.setIntakeDeployAndRoll());
+                NamedCommands.registerCommand("feedAll", m_superstructure.feedAllCommand());
+                NamedCommands.registerCommand("stopShooting", m_superstructure.stopShootingCommand());
+                
                 // ==================== CONTROLLER BINDINGS ====================
                 // Controller bindings are configured in separate classes for organization.
                 // This keeps RobotContainer clean and makes bindings easier to find/modify.
-                DriverControls.configure(ControllerConstants.kDriverControllerPort, m_robotDrive);
-                OperatorControls.configure(ControllerConstants.kOperatorControllerPort);
+                DriverControls.configure(
+                        ControllerConstants.kDriverControllerPort, 
+                        m_robotDrive,
+                        m_superstructure);  // Pass Superstructure for simulation fireFuel
+                OperatorControls.configure(
+                        ControllerConstants.kOperatorControllerPort, 
+                        m_robotDrive, 
+                        m_superstructure);
                 
                 // ==================== AUTO CHOOSER ====================
                 // AutoBuilder.buildAutoChooser() automatically finds all .auto files
@@ -127,5 +178,52 @@ public class RobotContainer {
          */
         public Command getAutonomousCommand() {
                 return autoChooser.getSelected();
+        }
+        
+        // ==================== GETTERS FOR LOGGING ====================
+        
+        /**
+         * Gets the robot's current pose.
+         * @return Pose2d of the robot
+         */
+        public Pose2d getRobotPose() {
+                return m_robotDrive.getPose();
+        }
+        
+        /**
+         * Gets the robot's current 3D pose.
+         * @return Pose3d of the robot
+         */
+        public Pose3d getRobotPose3d() {
+                return m_robotDrive.getPose3d();
+        }
+        
+        /**
+         * Gets the aim direction - the shooter pose in field coordinates.
+         * This combines the robot pose with the shooter's turret/hood angles.
+         * Use this for AdvantageScope 3D visualization.
+         * 
+         * @return Pose3d representing where the shooter is pointing in field space
+         */
+        public Pose3d getAimDirection() {
+                Pose3d shooterPose = m_superstructure.getShooterPose();
+                return m_robotDrive.getPose3d().plus(
+                        new Transform3d(shooterPose.getTranslation(), shooterPose.getRotation()));
+        }
+        
+        /**
+         * Gets the current aim point (target location).
+         * @return Translation3d of the target
+         */
+        public Translation3d getAimPoint() {
+                return m_superstructure.getAimPoint();
+        }
+        
+        /**
+         * Gets the superstructure subsystem.
+         * @return The Superstructure
+         */
+        public Superstructure getSuperstructure() {
+                return m_superstructure;
         }
 }

@@ -5,33 +5,33 @@
 package frc.robot.controls;
 
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-
-// Import Constants.ControllerConstants when adding mechanism bindings:
-// import frc.robot.Constants.ControllerConstants;
+import frc.robot.commands.ShootOnTheMoveCommand;
+import frc.robot.subsystems.drive.SwerveSubsystem;
+import frc.robot.subsystems.mechanisms.Superstructure;
 
 /**
  * OperatorControls configures the operator controller bindings.
  * 
- * <p>The operator typically controls game-specific mechanisms like:
+ * <p>The operator controls game-specific mechanisms like:
  * <ul>
  *   <li>Shooter/intake</li>
  *   <li>Turret aiming</li>
  *   <li>Hood angle</li>
- *   <li>Climbing mechanisms</li>
+ *   <li>Feeding system (hopper/kicker)</li>
  * </ul>
  * 
- * <p>This is a placeholder - add bindings as mechanisms are added to the robot.
- * 
- * <p>Control scheme (Xbox controller):
+ * <p>Control scheme (Xbox controller - Port 1):
  * <ul>
- *   <li>Right Trigger: Shoot</li>
- *   <li>Left Trigger: Intake</li>
- *   <li>Right Bumper: Outtake/reverse</li>
- *   <li>A Button: Stow mechanisms</li>
- *   <li>B Button: Score low</li>
- *   <li>Y Button: Score high</li>
- *   <li>X Button: Auto-aim</li>
- *   <li>D-Pad: Manual turret control</li>
+ *   <li>Right Bumper: Deploy intake and run rollers</li>
+ *   <li>Y Button: Shoot (spin up shooter and fire when ready)</li>
+ *   <li>X Button: Stop shooting</li>
+ *   <li>A Button: Feed all (run hopper and kicker forward)</li>
+ *   <li>B Button: Back feed (reverse hopper and kicker)</li>
+ *   <li>Left Bumper: Toggle auto-aim (shoot on the move)</li>
+ *   <li>D-Pad Up: Turret forward</li>
+ *   <li>D-Pad Left: Turret left (90°)</li>
+ *   <li>D-Pad Right: Turret right (-90°)</li>
+ *   <li>Start: Re-zero intake pivot and turret</li>
  * </ul>
  */
 public class OperatorControls {
@@ -41,53 +41,90 @@ public class OperatorControls {
 
   /**
    * Configures the operator controller bindings.
-   * Call this once from RobotContainer.
+   * Use this version before Superstructure is available.
    * 
    * @param port Controller USB port (usually 1)
    */
   public static void configure(int port) {
     controller = new CommandXboxController(port);
-    
-    // ==================== BUTTON BINDINGS ====================
-    // Add mechanism control bindings here as you add subsystems
-    
-    // Example bindings (uncomment and modify when you have mechanisms):
-    
-    // // Right Trigger - Shoot while held
-    // controller.rightTrigger(ControllerConstants.kTriggerThreshold)
-    //     .whileTrue(shooter.shootCommand());
-    
-    // // Left Trigger - Intake while held
-    // controller.leftTrigger(ControllerConstants.kTriggerThreshold)
-    //     .whileTrue(intake.intakeCommand());
-    
-    // // A Button - Stow all mechanisms
-    // controller.a()
-    //     .onTrue(superstructure.stowCommand());
-    
-    // // X Button - Auto-aim at target
-    // controller.x()
-    //     .whileTrue(superstructure.autoAimCommand());
-    
-    // // D-Pad - Manual turret control
-    // controller.povLeft()
-    //     .whileTrue(turret.manualLeft());
-    // controller.povRight()
-    //     .whileTrue(turret.manualRight());
+    // No bindings without Superstructure - waiting for full integration
   }
   
   /**
-   * Configures operator bindings with a Superstructure subsystem.
-   * Use this version when you have a Superstructure that coordinates mechanisms.
+   * Configures operator bindings with drivetrain and Superstructure.
+   * This is the main configuration method when mechanisms are available.
    * 
    * @param port Controller USB port
+   * @param drivetrain The swerve drive subsystem
    * @param superstructure The Superstructure subsystem (coordinates mechanisms)
    */
-  // public static void configure(int port, Superstructure superstructure) {
-  //   controller = new CommandXboxController(port);
-  //   
-  //   // Add Superstructure-based bindings here
-  // }
+  public static void configure(int port, SwerveSubsystem drivetrain, Superstructure superstructure) {
+    controller = new CommandXboxController(port);
+    
+    // ==================== INITIALIZATION ====================
+    
+    // Start Button: Re-zero intake pivot and turret encoders
+    controller.start()
+        .onTrue(superstructure.rezeroIntakePivotAndTurretCommand()
+            .ignoringDisable(true));
+    
+    // ==================== INTAKE CONTROLS ====================
+    
+    // Right Bumper: Deploy intake and run rollers while held
+    controller.rightBumper()
+        .whileTrue(superstructure.setIntakeDeployAndRoll()
+            .withName("OperatorControls.intakeDeployed"));
+    
+    // ==================== SHOOTING CONTROLS ====================
+    
+    // Y Button: Shoot (spins up shooter and fires when ready)
+    controller.y()
+        .onTrue(superstructure.shootCommand());
+    
+    // X Button: Stop shooting (cancel shoot sequence)
+    controller.x()
+        .whileTrue(superstructure.stopShootingCommand());
+    
+    // ==================== FEEDING CONTROLS ====================
+    
+    // A Button: Feed all (run hopper and kicker forward)
+    // Stops feeding when released
+    controller.a()
+        .whileTrue(superstructure.feedAllCommand()
+            .finallyDo(() -> superstructure.stopFeedingAllCommand().schedule()));
+    
+    // B Button: Back feed (reverse hopper and kicker to clear jams)
+    // Stops when released
+    controller.b()
+        .whileTrue(superstructure.backFeedAllCommand()
+            .finallyDo(() -> superstructure.stopFeedingAllCommand().schedule()));
+    
+    // ==================== TURRET CONTROLS ====================
+    
+    // D-Pad Up: Turret forward (0°)
+    controller.povUp()
+        .onTrue(superstructure.setTurretForward()
+            .withName("OperatorControls.setTurretForward"));
+    
+    // D-Pad Left: Turret left (+90°)
+    controller.povLeft()
+        .onTrue(superstructure.setTurretLeft()
+            .withName("OperatorControls.setTurretLeft"));
+    
+    // D-Pad Right: Turret right (-90°)
+    controller.povRight()
+        .onTrue(superstructure.setTurretRight()
+            .withName("OperatorControls.setTurretRight"));
+    
+    // ==================== AUTO-AIM ====================
+    
+    // Left Bumper: Toggle auto-aim (shoot on the move with lead compensation)
+    controller.leftBumper()
+        .toggleOnTrue(new ShootOnTheMoveCommand(drivetrain, superstructure, 
+                () -> superstructure.getAimPoint())
+            .ignoringDisable(true)
+            .withName("OperatorControls.aimCommand"));
+  }
   
   /**
    * Gets the operator controller.
