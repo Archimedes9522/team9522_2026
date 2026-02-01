@@ -12,6 +12,7 @@ import com.pathplanner.lib.auto.NamedCommands;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.Distance;
@@ -214,7 +215,14 @@ public class RobotContainer {
                 // ==================== AUTO CHOOSER ====================
                 // AutoBuilder.buildAutoChooser() automatically finds all .auto files
                 // in src/main/deploy/pathplanner/autos/ and creates a dropdown
-                autoChooser = AutoBuilder.buildAutoChooser("None");
+                autoChooser = AutoBuilder.buildAutoChooser();
+                
+                // Add a "Do Nothing" default option
+                autoChooser.setDefaultOption("Do Nothing", Commands.none().withName("Do Nothing"));
+                
+                // Add any custom autos here
+                // autoChooser.addOption("Drive Forward", m_robotDrive.driveForward().withTimeout(5));
+                
                 SmartDashboard.putData("Auto Chooser", autoChooser);
         }
 
@@ -366,6 +374,7 @@ public class RobotContainer {
         /**
          * Called when alliance color changes (e.g., when connected to FMS).
          * Updates the current alliance and resets aim point to hub.
+         * In simulation, also resets the robot pose to the correct side of the field.
          * 
          * @param alliance The new alliance color
          */
@@ -377,6 +386,15 @@ public class RobotContainer {
                         m_superstructure.setAimPoint(Constants.AimPoints.BLUE_HUB.value);
                 } else {
                         m_superstructure.setAimPoint(Constants.AimPoints.RED_HUB.value);
+                }
+                
+                // In simulation, reset pose to the correct alliance side
+                if (!Robot.isReal()) {
+                        Pose2d newPose = (alliance == Alliance.Blue)
+                                ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side
+                                : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side
+                        m_robotDrive.resetOdometry(newPose);
+                        System.out.println("Reset pose for " + alliance + " alliance: " + newPose);
                 }
                 
                 System.out.println("Alliance changed to: " + alliance);

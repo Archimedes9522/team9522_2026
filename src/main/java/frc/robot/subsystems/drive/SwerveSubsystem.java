@@ -26,6 +26,7 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.DriveConstants;
@@ -82,13 +83,18 @@ public class SwerveSubsystem extends SubsystemBase {
     // YAGSL reads JSON config files from the deploy/swerve directory
     File swerveJsonDirectory = new File(Filesystem.getDeployDirectory(), "swerve");
     
-    // Starting pose for simulation - center of field to avoid MapleSim terrain issues
-    // This only affects simulation; on real robot, odometry starts at this pose
-    // but you can reset it via resetOdometry() or vision correction
-    // 
-    // For autonomous, your auto routine should set the correct starting pose
-    // based on where you actually place the robot on the field.
-    Pose2d simulationStartPose = new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0));
+    // Starting pose for simulation - depends on alliance color
+    // Blue alliance: Left side of field (X ~2.75m), facing right (0°)
+    // Red alliance: Right side of field (X ~14.25m), facing left (180°)
+    // Note: In sim, DriverStation.getAlliance() may not be set yet at construction time,
+    // so we default to blue. The pose will be corrected when alliance is set.
+    boolean isBlueAlliance = DriverStation.getAlliance()
+        .map(alliance -> alliance == DriverStation.Alliance.Blue)
+        .orElse(true); // Default to blue if not set
+    
+    Pose2d simulationStartPose = isBlueAlliance 
+        ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side, facing right
+        : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side, facing left
     
     try {
       // Parse JSON files and create SwerveDrive object with starting pose
@@ -98,11 +104,19 @@ public class SwerveSubsystem extends SubsystemBase {
     }
     
     // ==================== YAGSL CONFIGURATION ====================
-    // Enable heading correction - helps maintain heading while driving
-    swerveDrive.setHeadingCorrection(true);
+    // Heading correction should only be used while controlling the robot via angle (not angular velocity)
+    // When enabled, it can cause unwanted rotation when driving translationally
+    swerveDrive.setHeadingCorrection(false);
     
-    // Enable cosine compensation - improves accuracy at high angles
-    swerveDrive.setCosineCompensator(true);
+    // Correct for skew that gets worse as angular velocity increases
+    // This compensates for the robot drifting while rotating at speed
+    // DISABLED in simulation - causes pose glitching/jumping in sim
+    if (!RobotBase.isSimulation()) {
+      swerveDrive.setAngularVelocityCompensation(true, true, 0.1);
+    }
+    
+    // Cosine compensation improves accuracy at high angles, but causes discrepancies in simulation
+    swerveDrive.setCosineCompensator(!RobotBase.isSimulation());
     
     // ==================== PATHPLANNER CONFIGURATION ====================
     try {

@@ -40,6 +40,7 @@ import swervelib.SwerveInputStream;
  * <ul>
  *   <li>Left Stick: Translation (forward/backward, strafe)</li>
  *   <li>Right Stick X: Rotation</li>
+ *   <li>Left Bumper: Slow mode (50% speed while held)</li>
  *   <li>Left Stick Button (L3): Lock wheels in X pattern</li>
  *   <li>Start: Zero gyro heading</li>
  *   <li>Y: Center modules (test mode only)</li>
@@ -51,8 +52,14 @@ public class DriverControls {
   /** The driver's Xbox controller */
   private static CommandXboxController controller;
   
-  /** YAGSL input stream for smooth joystick handling */
+  /** YAGSL input stream for smooth joystick handling - full speed */
   private static SwerveInputStream driveInputStream;
+  
+  /** YAGSL input stream for slow mode - 50% speed */
+  private static SwerveInputStream driveInputStreamSlow;
+  
+  /** Slow mode speed multiplier (0.5 = 50% speed) */
+  private static final double SLOW_MODE_SCALE = 0.5;
 
   /**
    * Configures the driver controller bindings.
@@ -78,7 +85,7 @@ public class DriverControls {
   public static void configure(int port, SwerveSubsystem drivetrain, Superstructure superstructure) {
     controller = new CommandXboxController(port);
     
-    // ==================== SWERVE INPUT STREAM ====================
+    // ==================== SWERVE INPUT STREAM (NORMAL SPEED) ====================
     // SwerveInputStream wraps joystick inputs with useful features:
     // - Deadband: Ignores small joystick movements (drift)
     // - Scale: Limits max speed for training/precision
@@ -95,9 +102,22 @@ public class DriverControls {
         .robotRelative(false)
         // Flip controls for red alliance (driver station on opposite side)
         .allianceRelativeControl(true)
-        // Scale speed (0.0 to 1.0) - start low, increase as drivers improve
+        // Scale speed (0.0 to 1.0) - full speed
         .scaleTranslation(ControllerConstants.kDriveSpeedScale)
         // Ignore small stick movements below this threshold
+        .deadband(ControllerConstants.kDeadband);
+    
+    // ==================== SWERVE INPUT STREAM (SLOW MODE) ====================
+    // Same as normal but with reduced speed for precision movements
+    driveInputStreamSlow = SwerveInputStream.of(
+            drivetrain.getSwerveDrive(),
+            () -> controller.getLeftY() * -1,
+            () -> controller.getLeftX() * -1)
+        .withControllerRotationAxis(() -> controller.getRightX() * -1)
+        .robotRelative(false)
+        .allianceRelativeControl(true)
+        // Slow mode: 50% of normal speed for precision
+        .scaleTranslation(ControllerConstants.kDriveSpeedScale * SLOW_MODE_SCALE)
         .deadband(ControllerConstants.kDeadband);
     
     // ==================== DEFAULT COMMAND ====================
@@ -114,6 +134,12 @@ public class DriverControls {
    * Configures button bindings for the driver controller.
    */
   private static void configureButtonBindings(SwerveSubsystem drivetrain, Superstructure superstructure) {
+    // Left Bumper - Slow mode (50% speed while held)
+    // Use for precision movements and alignment
+    controller.leftBumper()
+        .whileTrue(drivetrain.driveFieldOriented(driveInputStreamSlow)
+            .withName("DriverControls.slowModeDrive"));
+    
     // Left Stick Button (L3) - Lock wheels in X pattern
     // Prevents robot from being pushed
     controller.leftStick()

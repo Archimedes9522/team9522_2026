@@ -169,7 +169,10 @@ public class Robot extends LoggedRobot {
 
     // Schedule the autonomous command to run
     if (m_autonomousCommand != null) {
+      System.out.println("[Auto] Running auto: " + m_autonomousCommand.getName());
       m_autonomousCommand.schedule();
+    } else {
+      System.out.println("[Auto] No autonomous command selected!");
     }
   }
 
@@ -208,43 +211,104 @@ public class Robot extends LoggedRobot {
 
   /** Initialize SmartDashboard/Shuffleboard widgets */
   public void setupSmartDashboard() {
-    SmartDashboard.putData("Field", m_field);           // Field visualization
+    // === FIELD VISUALIZATION ===
+    SmartDashboard.putData("Field", m_field);           // Field visualization with robot pose
+    
+    // === SYSTEM STATUS ===
     SmartDashboard.putData("PDH", m_pdh);               // Power distribution widget
+    SmartDashboard.putData("Scheduler", CommandScheduler.getInstance()); // Running commands
+    
+    // === ROBOT POSE ===
+    SmartDashboard.putNumber("Robot X (m)", 0.0);
+    SmartDashboard.putNumber("Robot Y (m)", 0.0);
+    SmartDashboard.putNumber("Robot Heading (deg)", 0.0);
+    
+    // === ROBOT VELOCITY ===
+    SmartDashboard.putNumber("Robot Speed (m/s)", 0.0);
+    SmartDashboard.putNumber("Robot Vx (m/s)", 0.0);
+    SmartDashboard.putNumber("Robot Vy (m/s)", 0.0);
+    SmartDashboard.putNumber("Robot Omega (deg/s)", 0.0);
+    
+    // === GYRO DATA ===
+    SmartDashboard.putNumber("Gyro Angle (deg)", m_gyro.getAngle());
+    SmartDashboard.putNumber("Gyro Pitch (deg)", m_gyro.getPitch());
+    SmartDashboard.putNumber("Gyro Roll (deg)", m_gyro.getRoll());
+    
+    // === VISION STATUS ===
+    SmartDashboard.putNumber("Vision Tags Seen", 0);
+    SmartDashboard.putBoolean("Vision Connected", false);
+    
+    // === MECHANISM STATUS ===
+    SmartDashboard.putNumber("Turret Angle (deg)", 0.0);
+    SmartDashboard.putNumber("Shooter RPM", 0.0);
+    SmartDashboard.putBoolean("Shooter Ready", false);
+    SmartDashboard.putBoolean("Auto-Aim Active", false);
+    
+    // === CONTROL BUTTONS ===
     SmartDashboard.putBoolean("Reset Pose", false);     // Button to reset odometry
-    SmartDashboard.putBoolean("SetX", false);           // Button to lock wheels
-    SmartDashboard.putNumber("Gyro angle", m_gyro.getAngle());
-    SmartDashboard.putNumber("Gyro pitch", m_gyro.getPitch());
-    SmartDashboard.putNumber("Gyro roll", m_gyro.getRoll());
+    SmartDashboard.putBoolean("Lock Wheels", false);    // Button to lock wheels in X
+    SmartDashboard.putBoolean("Zero Gyro", false);      // Button to zero gyro heading
   }
 
   /** Update SmartDashboard values every loop */
   private void updateSmartDashboard() {
-    // Match info
+    // === MATCH INFO ===
     SmartDashboard.putNumber("Match Time", Timer.getMatchTime());
     SmartDashboard.putNumber("PDH Voltage", m_pdh.getVoltage());
-    SmartDashboard.putNumber("Robot Velocity", m_robotContainer.m_robotDrive.getRobotVelocity());
+    SmartDashboard.putNumber("PDH Current (A)", m_pdh.getTotalCurrent());
 
-    // Update Field2d widget with current robot pose
+    // === ROBOT POSE ===
     var robotPose = m_robotContainer.m_robotDrive.getPose();
     m_field.setRobotPose(robotPose);
+    SmartDashboard.putNumber("Robot X (m)", robotPose.getX());
+    SmartDashboard.putNumber("Robot Y (m)", robotPose.getY());
+    SmartDashboard.putNumber("Robot Heading (deg)", robotPose.getRotation().getDegrees());
+    
+    // === ROBOT VELOCITY ===
+    var chassisSpeeds = m_robotContainer.m_robotDrive.getRobotRelativeSpeeds();
+    double robotSpeed = Math.hypot(chassisSpeeds.vxMetersPerSecond, chassisSpeeds.vyMetersPerSecond);
+    SmartDashboard.putNumber("Robot Speed (m/s)", robotSpeed);
+    SmartDashboard.putNumber("Robot Vx (m/s)", chassisSpeeds.vxMetersPerSecond);
+    SmartDashboard.putNumber("Robot Vy (m/s)", chassisSpeeds.vyMetersPerSecond);
+    SmartDashboard.putNumber("Robot Omega (deg/s)", Math.toDegrees(chassisSpeeds.omegaRadiansPerSecond));
+    
+    // === GYRO DATA ===
+    SmartDashboard.putNumber("Gyro Angle (deg)", m_gyro.getAngle());
+    SmartDashboard.putNumber("Gyro Pitch (deg)", m_gyro.getPitch());
+    SmartDashboard.putNumber("Gyro Roll (deg)", m_gyro.getRoll());
+    
+    // === MECHANISM STATUS ===
+    var superstructure = m_robotContainer.getSuperstructure();
+    SmartDashboard.putNumber("Turret Angle (deg)", 
+        superstructure.getTurretAngle().in(edu.wpi.first.units.Units.Degrees));
+    SmartDashboard.putNumber("Shooter RPM", 
+        superstructure.getShooterSpeed().in(edu.wpi.first.units.Units.RPM));
+    SmartDashboard.putBoolean("Shooter Ready", superstructure.isReadyToShoot());
+    
+    // === AIM POINT (for debugging) ===
+    var aimPoint = m_robotContainer.getAimPoint();
+    SmartDashboard.putNumber("Aim X (m)", aimPoint.getX());
+    SmartDashboard.putNumber("Aim Y (m)", aimPoint.getY());
+    SmartDashboard.putNumber("Aim Z (m)", aimPoint.getZ());
 
-    // Handle "Reset Pose" button from dashboard
+    // === HANDLE DASHBOARD BUTTONS ===
+    // Reset Pose button
     if (SmartDashboard.getBoolean("Reset Pose", false)) {
-      m_robotContainer.m_robotDrive.zeroHeadingCommand();
       m_robotContainer.m_robotDrive.resetOdometry(new Pose2d());
-      SmartDashboard.putBoolean("Reset Pose", false); // Reset button state
+      SmartDashboard.putBoolean("Reset Pose", false);
     }
 
-    // Handle "SetX" button from dashboard
-    if (SmartDashboard.getBoolean("SetX", false)) {
-      m_robotContainer.m_robotDrive.setXCommand();
-      SmartDashboard.putBoolean("SetX", false);
+    // Lock Wheels button
+    if (SmartDashboard.getBoolean("Lock Wheels", false)) {
+      m_robotContainer.m_robotDrive.lock();
+      SmartDashboard.putBoolean("Lock Wheels", false);
     }
-
-    // Gyro telemetry for debugging
-    SmartDashboard.putNumber("Gyro angle", m_gyro.getAngle());
-    SmartDashboard.putNumber("Gyro pitch", m_gyro.getPitch());
-    SmartDashboard.putNumber("Gyro roll", m_gyro.getRoll());
+    
+    // Zero Gyro button
+    if (SmartDashboard.getBoolean("Zero Gyro", false)) {
+      m_robotContainer.m_robotDrive.zeroGyro();
+      SmartDashboard.putBoolean("Zero Gyro", false);
+    }
   }
 
   /**
@@ -254,8 +318,13 @@ public class Robot extends LoggedRobot {
   @Override
   public void disabledPeriodic() {
     // Check if selected auto has changed
-    newAutoName = m_robotContainer.getAutonomousCommand().getName();
-    if (autoName != newAutoName) {
+    Command selectedAuto = m_robotContainer.getAutonomousCommand();
+    if (selectedAuto == null) {
+      return; // No auto selected
+    }
+    
+    newAutoName = selectedAuto.getName();
+    if (!newAutoName.equals(autoName)) {
       autoName = newAutoName;
       
       // If this is a valid PathPlanner auto, display its path on the field
@@ -282,6 +351,9 @@ public class Robot extends LoggedRobot {
         } catch (IOException | ParseException e) {
           e.printStackTrace();
         }
+      } else {
+        // Clear the path if this isn't a PathPlanner auto
+        m_field.getObject("path").setPoses(new ArrayList<>());
       }
     }
   }

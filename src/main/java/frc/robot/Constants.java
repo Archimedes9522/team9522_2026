@@ -216,8 +216,12 @@ public final class Constants {
     /** Threshold for trigger buttons to register as pressed */
     public static final double kTriggerButtonThreshold = 0.2;
     
-    /** Speed multiplier for driving (0.5 = half speed, good for learning/precision) */
-    public static final double kDriveSpeedFactor = 0.5;
+    /** 
+     * Speed multiplier for driving (0.0 to 1.0).
+     * CA26 uses full speed (1.0) with 14.5 ft/s max.
+     * Our max is 15.76 ft/s (~4.8 m/s) so 1.0 = full speed.
+     */
+    public static final double kDriveSpeedFactor = 1.0;
   }
 
   /**
@@ -291,15 +295,14 @@ public final class Constants {
     
     /** 
      * Drive speed scaling (0.0 to 1.0).
-     * Start low for new drivers, increase as skill improves.
-     * 0.25 = 25% max speed, good for learning
-     * 0.5 = 50% max speed, good for precision
-     * 1.0 = full speed, for experienced drivers
+     * CA26 uses full speed - adjust if you want to limit for new drivers.
+     * 0.5 = 50% max speed, good for precision/learning
+     * 1.0 = full speed (~4.8 m/s)
      */
-    public static final double kDriveSpeedScale = 0.5;
+    public static final double kDriveSpeedScale = 1.0;
     
     /** Rotation speed scaling (0.0 to 1.0) */
-    public static final double kRotationSpeedScale = 0.5;
+    public static final double kRotationSpeedScale = 1.0;
     
     /** Threshold for trigger buttons to register as pressed */
     public static final double kTriggerThreshold = 0.2;
