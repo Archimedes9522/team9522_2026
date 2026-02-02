@@ -24,6 +24,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ControllerConstants;
+import frc.robot.commands.ShootOnTheMoveCommand;
 import frc.robot.controls.DriverControls;
 import frc.robot.controls.OperatorControls;
 import frc.robot.controls.PoseControls;
@@ -169,6 +170,32 @@ public class RobotContainer {
                 NamedCommands.registerCommand("intake", m_superstructure.setIntakeDeployAndRoll());
                 NamedCommands.registerCommand("feedAll", m_superstructure.feedAllCommand());
                 NamedCommands.registerCommand("stopShooting", m_superstructure.stopShootingCommand());
+                NamedCommands.registerCommand("stopAll", m_superstructure.stopAllCommand());
+                NamedCommands.registerCommand("eject", m_superstructure.ejectCommand());
+                
+                // Shoot-on-the-move: Enable/disable auto-aim with lead compensation
+                // Use "enableAutoAim" at start of shooting section, "disableAutoAim" after
+                NamedCommands.registerCommand("enableAutoAim", 
+                        new ShootOnTheMoveCommand(m_robotDrive, m_superstructure, 
+                                () -> m_superstructure.getAimPoint())
+                        .withName("AutoAim.enable"));
+                NamedCommands.registerCommand("disableAutoAim", 
+                        Commands.runOnce(() -> {})  // Placeholder - auto-aim ends when path ends
+                        .withName("AutoAim.disable"));
+                
+                // Simulation-only: Fire a FUEL projectile for visualization
+                // This creates a physics-simulated projectile that shows trajectory in AdvantageScope
+                if (Robot.isSimulation()) {
+                        NamedCommands.registerCommand("fireFuel", 
+                                DriverControls.fireFuel(m_robotDrive, m_superstructure));
+                        
+                        // Fire continuously while the command is active (10 shots/sec)
+                        NamedCommands.registerCommand("fireFuelRepeating",
+                                Commands.repeatingSequence(
+                                        DriverControls.fireFuel(m_robotDrive, m_superstructure),
+                                        Commands.waitSeconds(0.1))
+                                .withName("AutoFire.repeating"));
+                }
                 
                 // ==================== CONTROLLER BINDINGS ====================
                 // Controller bindings are configured in separate classes for organization.
