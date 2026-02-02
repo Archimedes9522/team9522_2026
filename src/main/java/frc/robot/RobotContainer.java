@@ -401,7 +401,8 @@ public class RobotContainer {
         /**
          * Called when alliance color changes (e.g., when connected to FMS).
          * Updates the current alliance and resets aim point to hub.
-         * In simulation, also resets the robot pose to the correct side of the field.
+         * In simulation, also resets the robot pose to the correct side of the field
+         * (but only when disabled, not during auto/teleop).
          * 
          * @param alliance The new alliance color
          */
@@ -416,7 +417,8 @@ public class RobotContainer {
                 }
                 
                 // In simulation, reset pose to the correct alliance side
-                if (!Robot.isReal()) {
+                // BUT only when disabled - don't override auto starting position!
+                if (!Robot.isReal() && DriverStation.isDisabled()) {
                         Pose2d newPose = (alliance == Alliance.Blue)
                                 ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side
                                 : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side
