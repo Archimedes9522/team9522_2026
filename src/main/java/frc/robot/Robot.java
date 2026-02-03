@@ -51,6 +51,9 @@ public class Robot extends LoggedRobot {
   /** The currently scheduled autonomous command */
   private Command m_autonomousCommand;
   
+  /** Tracks if we're coming from autonomous mode (to know if teleop should reset pose) */
+  private boolean comingFromAuto = false;
+  
   /** NavX gyroscope for heading - connected via MXP SPI port */
   private final AHRS m_gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
   
@@ -161,6 +164,9 @@ public class Robot extends LoggedRobot {
   /** Called once when autonomous mode starts */
   @Override
   public void autonomousInit() {
+    // Mark that we're running auto (so teleop knows not to reset pose)
+    comingFromAuto = true;
+    
     // Update aim point based on current alliance
     m_robotContainer.getSuperstructure().updateAimPointForAlliance();
     
@@ -183,7 +189,7 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void autonomousExit() {
-    // Cleanup when leaving auto mode - nothing needed currently
+    // comingFromAuto stays true - teleop will check it
   }
 
   /** Called once when teleop mode starts */
@@ -197,6 +203,15 @@ public class Robot extends LoggedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+    
+    // In simulation, reset pose to alliance starting position
+    // BUT only if we're NOT coming from auto (auto already set the pose)
+    if (!isReal() && !comingFromAuto) {
+      m_robotContainer.resetSimPoseForAlliance();
+    }
+    
+    // Reset the flag for next time
+    comingFromAuto = false;
   }
 
   @Override

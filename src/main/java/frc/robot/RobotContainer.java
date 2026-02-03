@@ -173,12 +173,11 @@ public class RobotContainer {
                 NamedCommands.registerCommand("stopAll", m_superstructure.stopAllCommand());
                 NamedCommands.registerCommand("eject", m_superstructure.ejectCommand());
                 
-                // Shoot-on-the-move: Enable/disable auto-aim with lead compensation
-                // Use "enableAutoAim" at start of shooting section, "disableAutoAim" after
+                // Shoot-on-the-move: Auto-aim with lead compensation
+                // CA26 pattern: ShootOnTheMoveCommand schedules aimDynamicCommand internally
                 NamedCommands.registerCommand("enableAutoAim", 
                         new ShootOnTheMoveCommand(m_robotDrive, m_superstructure, 
-                                () -> m_superstructure.getAimPoint())
-                        .withName("AutoAim.enable"));
+                                () -> m_superstructure.getAimPoint()));
                 NamedCommands.registerCommand("disableAutoAim", 
                         Commands.runOnce(() -> {})  // Placeholder - auto-aim ends when path ends
                         .withName("AutoAim.disable"));
@@ -316,6 +315,30 @@ public class RobotContainer {
                 return m_superstructure;
         }
         
+        /**
+         * Resets the robot pose to the alliance-specific starting position.
+         * Only works in simulation - does nothing on real robot.
+         * Call this in teleopInit when NOT coming from auto.
+         */
+        public void resetSimPoseForAlliance() {
+                if (!Robot.isReal()) {
+                        Pose2d startPose = getStartingPoseForAlliance();
+                        m_robotDrive.resetOdometry(startPose);
+                        System.out.println("[Sim] Reset pose for teleop: " + startPose);
+                }
+        }
+        
+        /**
+         * Gets the default starting pose based on current alliance.
+         * @return Pose2d for the starting position
+         */
+        public Pose2d getStartingPoseForAlliance() {
+                Alliance alliance = getAlliance();
+                return (alliance == Alliance.Blue)
+                        ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side
+                        : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side
+        }
+        
         // ==================== ZONE DETECTION ====================
         
         /**
@@ -407,6 +430,10 @@ public class RobotContainer {
          * @param alliance The new alliance color
          */
         private void onAllianceChanged(Alliance alliance) {
+                System.out.println("[Alliance] Change detected: " + currentAlliance + " -> " + alliance);
+                System.out.println("[Alliance] Robot disabled: " + DriverStation.isDisabled());
+                System.out.println("[Alliance] In simulation: " + !Robot.isReal());
+                
                 currentAlliance = alliance;
                 
                 // Update aim point based on alliance
@@ -417,15 +444,15 @@ public class RobotContainer {
                 }
                 
                 // In simulation, reset pose to the correct alliance side
-                // BUT only when disabled - don't override auto starting position!
+                // Only reset when disabled - PathPlanner's resetOdom handles auto starting position
                 if (!Robot.isReal() && DriverStation.isDisabled()) {
                         Pose2d newPose = (alliance == Alliance.Blue)
                                 ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side
                                 : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side
                         m_robotDrive.resetOdometry(newPose);
-                        System.out.println("Reset pose for " + alliance + " alliance: " + newPose);
+                        System.out.println("[Alliance] Reset pose to: " + newPose);
+                } else if (!Robot.isReal()) {
+                        System.out.println("[Alliance] Skipping pose reset (robot enabled or auto running)");
                 }
-                
-                System.out.println("Alliance changed to: " + alliance);
         }
 }

@@ -6,12 +6,10 @@ import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.RPM;
@@ -19,22 +17,9 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.drive.SwerveSubsystem;
 import frc.robot.subsystems.mechanisms.Superstructure;
+import frc.robot.subsystems.drive.SwerveSubsystem;
 
-/**
- * Command for dynamic aiming and shooting while the robot is moving.
- * 
- * This command calculates lead compensation based on:
- * - Current robot velocity
- * - Distance to target
- * - Estimated time of flight
- * 
- * It uses interpolation tables to determine:
- * - Required shooter RPM based on distance
- * - Required hood angle based on distance
- * - Time of flight for lead calculation
- */
 public class ShootOnTheMoveCommand extends Command {
   private final SwerveSubsystem drivetrain;
   private final Superstructure superstructure;
@@ -44,13 +29,6 @@ public class ShootOnTheMoveCommand extends Command {
   private Angle latestHoodAngle;
   private Angle latestTurretAngle;
 
-  /**
-   * Creates a new ShootOnTheMoveCommand.
-   * 
-   * @param drivetrain The swerve drive subsystem for pose and velocity
-   * @param superstructure The superstructure containing shooter, turret, hood
-   * @param aimPointSupplier Supplier for the 3D target point (e.g., hub center)
-   */
   public ShootOnTheMoveCommand(SwerveSubsystem drivetrain, Superstructure superstructure,
       Supplier<Translation3d> aimPointSupplier) {
     this.drivetrain = drivetrain;
@@ -58,9 +36,13 @@ public class ShootOnTheMoveCommand extends Command {
     this.aimPointSupplier = aimPointSupplier;
 
     // We use the drivetrain to determine linear velocity, but don't require it for
-    // control. We will be using the superstructure to control the shooting 
-    // mechanism so it's a requirement.
+    // control. We
+    // will be using the superstructure to control the shooting mechanism so it's a
+    // requirement.
     // addRequirements(superstructure);
+
+    // TODO: figure out if the above is actually required. Right now, when you start
+    // some other command, the auto aim can't start back up again
   }
 
   @Override
@@ -71,12 +53,18 @@ public class ShootOnTheMoveCommand extends Command {
     latestTurretAngle = superstructure.getTurretAngle();
     latestShootSpeed = superstructure.getShooterSpeed();
 
-    // Start the dynamic aim command with suppliers that track our calculations
+    // TODO: when this current command ends, we should probably cancel the dynamic
+    // aim command
     superstructure.aimDynamicCommand(
-        () -> this.latestShootSpeed,
-        () -> this.latestTurretAngle,
-        () -> this.latestHoodAngle
-    ).schedule();
+        () -> {
+          return this.latestShootSpeed;
+        },
+        () -> {
+          return this.latestTurretAngle;
+        },
+        () -> {
+          return this.latestHoodAngle;
+        }).schedule();
   }
 
   @Override
@@ -89,128 +77,99 @@ public class ShootOnTheMoveCommand extends Command {
     // Calculate trajectory to aimPoint
     var target = aimPointSupplier.get();
 
-    // Get shooter position in field coordinates
-    Translation3d shooterLocation = drivetrain.getPose3d().getTranslation()
+    var shooterLocation = drivetrain.getPose3d().getTranslation()
         .plus(superstructure.getShooterPose().getTranslation());
 
-    // Project positions to ground plane for distance calculation
+    // Ignore this parameter for now, the range tables will account for it :/
+    // var deltaH = target.getMeasureZ().minus(shooterLocation.getMeasureZ());
     var shooterOnGround = new Translation2d(shooterLocation.getX(), shooterLocation.getY());
     var targetOnGround = new Translation2d(target.getX(), target.getY());
 
     var distanceToTarget = Meters.of(shooterOnGround.getDistance(targetOnGround));
 
-    // Get time of flight from lookup table
+    // Get time of flight. We could try to do this analytically but for now it's
+    // easier and more realistic
+    // to use a simple linear approximation based on empirical data.
     double timeOfFlight = getFlightTime(distanceToTarget);
 
     // Calculate corrective vector based on our current velocity multiplied by time
-    // of flight. If we're stationary, this should be zero. If we're backing up, 
-    // this will be "ahead" of the target, etc.
-    ChassisSpeeds fieldVelocity = drivetrain.getFieldRelativeSpeeds();
+    // of flight.
+    // If we're stationary, this should be zero. If we're backing up, this will be
+    // "ahead" of the target, etc.
+    var updatedPosition = drivetrain.getFieldRelativeSpeeds();
     var correctiveVector = new Translation2d(
-        fieldVelocity.vxMetersPerSecond * timeOfFlight, 
-        fieldVelocity.vyMetersPerSecond * timeOfFlight
-    ).unaryMinus();
+        updatedPosition.vxMetersPerSecond * timeOfFlight, 
+        updatedPosition.vyMetersPerSecond * timeOfFlight)
+        .unaryMinus();
     var correctiveVector3d = new Translation3d(correctiveVector.getX(), correctiveVector.getY(), 0);
 
-    // Log corrected aim point for visualization
     Logger.recordOutput("FieldSimulation/AimTargetCorrected",
         new Pose3d(target.plus(correctiveVector3d), Rotation3d.kZero));
 
     var correctedTarget = targetOnGround.plus(correctiveVector);
 
-    // Calculate vector from robot to corrected target
     var vectorToTarget = drivetrain.getPose().getTranslation().minus(correctedTarget);
 
     var correctedDistance = Meters.of(vectorToTarget.getNorm());
-    
-    // Calculate turret angle relative to robot heading
-    Rotation2d robotHeading = drivetrain.getRotation();
-    Angle calculatedHeading = vectorToTarget.getAngle()
-        .rotateBy(robotHeading.unaryMinus())
+    var calculatedHeading = vectorToTarget.getAngle()
+        .rotateBy(drivetrain.getRotation().unaryMinus())
         .getMeasure();
 
-    // Log debug info
-    Logger.recordOutput("ShootOnTheMove/RobotHeading", robotHeading.getDegrees());
-    Logger.recordOutput("ShootOnTheMove/CalculatedHeading", calculatedHeading.in(Degrees));
-    Logger.recordOutput("ShootOnTheMove/DistanceToTarget", distanceToTarget.in(Meters));
-    Logger.recordOutput("ShootOnTheMove/CorrectedDistance", correctedDistance.in(Meters));
-    Logger.recordOutput("ShootOnTheMove/TimeOfFlight", timeOfFlight);
+    Logger.recordOutput("ShootOnTheMove/RobotHeading", drivetrain.getRotation());
+    Logger.recordOutput("ShootOnTheMove/CalculatedHeading", calculatedHeading);
+    Logger.recordOutput("ShootOnTheMove/distanceToTarget", distanceToTarget);
 
-    // Update setpoints based on distance
     latestTurretAngle = calculatedHeading;
     latestShootSpeed = calculateRequiredShooterSpeed(correctedDistance);
-    latestHoodAngle = calculateRequiredHoodAngle(correctedDistance);
 
-    // Apply setpoints to superstructure
+    // TODO: add this back if/when we have a real hood, for now, just set it to the
+    // current angle
+    // latestHoodAngle = calculateRequiredHoodAngle(correctedDistance);
+    latestHoodAngle = superstructure.getHoodAngle();
+
     superstructure.setShooterSetpoints(
         latestShootSpeed,
         latestTurretAngle,
         latestHoodAngle);
+
+    // System.out.println("Shooting at distance: " + correctedDistance + " requires
+    // speed: " + latestShootSpeed
+    // + ", hood angle: " + latestHoodAngle + ", turret angle: " +
+    // latestTurretAngle);
   }
 
-  @Override
-  public void end(boolean interrupted) {
-    // Could optionally stop the shooter here
-    super.end(interrupted);
-  }
-
-  /**
-   * Gets the estimated time of flight for a given distance.
-   * @param distanceToTarget Distance to target
-   * @return Time of flight in seconds
-   */
   private double getFlightTime(Distance distanceToTarget) {
+    // Simple linear approximation based on empirical data.
     return TIME_OF_FLIGHT_BY_DISTANCE.get(distanceToTarget.in(Meters));
   }
 
-  /**
-   * Calculates required shooter speed for a given distance.
-   * @param distanceToTarget Distance to target
-   * @return Required shooter RPM
-   */
   private AngularVelocity calculateRequiredShooterSpeed(Distance distanceToTarget) {
     return RPM.of(SHOOTING_SPEED_BY_DISTANCE.get(distanceToTarget.in(Meters)));
   }
 
-  /**
-   * Calculates required hood angle for a given distance.
-   * @param distanceToTarget Distance to target
-   * @return Required hood angle
-   */
   private Angle calculateRequiredHoodAngle(Distance distanceToTarget) {
     return Degrees.of(HOOD_ANGLE_BY_DISTANCE.get(distanceToTarget.in(Meters)));
   }
 
-  // ============================================================================
-  // RANGE TABLES - Adjust these based on empirical testing!
-  // ============================================================================
-  
-  // Distance (meters) -> Time of flight (seconds)
-  // Start with estimates, tune during practice
+  // meters, seconds
   private static final InterpolatingDoubleTreeMap TIME_OF_FLIGHT_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(1.0, 0.3),    // Close shot - fast
-      Map.entry(2.0, 0.5),
-      Map.entry(3.0, 0.8),
-      Map.entry(4.0, 1.0),
-      Map.entry(5.0, 1.3));   // Far shot - slower arc
+      Map.entry(1.0, 1.0),
+      Map.entry(4.86, 1.5));
+  // TODO: add more data points here.
+  // CLOSE: NEED
+  // MID: maybe good enough
+  // FAR: NEED
 
-  // Distance (meters) -> Shooter speed (RPM)
-  // Higher RPM for longer distances
+  // meters, RPS
   private static final InterpolatingDoubleTreeMap SHOOTING_SPEED_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(1.0, 2000.0),   // Close - lower speed
       Map.entry(2.0, 2700.0),
       Map.entry(3.0, 3000.0),
       Map.entry(4.0, 3300.0),
-      Map.entry(5.0, 3750.0),   // Far - higher speed
-      Map.entry(6.0, 4200.0));
+      Map.entry(4.86, 3750.0));
 
-  // Distance (meters) -> Hood angle (degrees)
-  // Higher angle for closer shots (more arc), lower for far shots (flatter trajectory)
+  // meters, degrees
   private static final InterpolatingDoubleTreeMap HOOD_ANGLE_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(1.0, 60.0),   // Close - high angle
-      Map.entry(2.0, 50.0),
-      Map.entry(3.0, 40.0),
-      Map.entry(4.0, 30.0),
-      Map.entry(5.0, 25.0),   // Far - flatter shot
-      Map.entry(6.0, 20.0));
+      Map.entry(1.0, 15.0),
+      Map.entry(2.0, 30.0),
+      Map.entry(3.0, 45.0));
 }

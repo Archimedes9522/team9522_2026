@@ -144,6 +144,8 @@ public class Superstructure extends SubsystemBase {
       Supplier<AngularVelocity> shooterSpeedSupplier,
       Supplier<Angle> turretAngleSupplier,
       Supplier<Angle> hoodAngleSupplier) {
+    // CA26 pattern: Use .asProxy() to properly handle subsystem requirements
+    // This is critical when the command is scheduled from ShootOnTheMoveCommand
     return Commands.parallel(
         shooter.setSpeedDynamic(shooterSpeedSupplier).asProxy(),
         turret.setAngleDynamic(turretAngleSupplier).asProxy(),
@@ -159,6 +161,20 @@ public class Superstructure extends SubsystemBase {
     targetShooterSpeed = shooterSpeed;
     targetTurretAngle = turretAngle;
     targetHoodAngle = hoodAngle;
+  }
+
+  /**
+   * Command that continuously moves mechanisms to follow the target setpoints.
+   * Use this alongside ShootOnTheMoveCommand which updates the setpoints.
+   * 
+   * @return Command that follows target setpoints for turret and hood
+   */
+  public Command followTargetSetpointsCommand() {
+    return aimDynamicCommand(
+        () -> targetShooterSpeed,
+        () -> targetTurretAngle,
+        () -> targetHoodAngle)
+        .withName("Superstructure.followTargetSetpoints");
   }
 
   /**
@@ -407,10 +423,13 @@ public class Superstructure extends SubsystemBase {
     Logger.recordOutput("Superstructure/HoodOnTarget", isHoodOnTarget.getAsBoolean());
     Logger.recordOutput("Superstructure/ReadyToShoot", isReadyToShoot.getAsBoolean());
     
-    // Log targets
+    // Log targets - these are set by ShootOnTheMoveCommand
     Logger.recordOutput("Superstructure/TargetShooterRPM", targetShooterSpeed.in(RPM));
-    Logger.recordOutput("Superstructure/TargetTurretDegrees", targetTurretAngle.in(Degrees));
+    Logger.recordOutput("Superstructure/TargetTurretAngle", targetTurretAngle.in(Degrees));
     Logger.recordOutput("Superstructure/TargetHoodDegrees", targetHoodAngle.in(Degrees));
+    
+    // Log actual turret position for comparison
+    Logger.recordOutput("Superstructure/ActualTurretAngle", turret.getRawAngle().in(Degrees));
     
     // Log shooter pose for 3D visualization
     Logger.recordOutput("Superstructure/ShooterPose", getShooterPose());

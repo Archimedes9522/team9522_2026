@@ -78,13 +78,13 @@ public class TurretSubsystem extends SubsystemBase {
     // Initialize motor
     spark = new SparkMax(TurretConstants.kMotorId, MotorType.kBrushless);
 
-    // Configure YAMS SmartMotorController
+    // Configure YAMS SmartMotorController - CA26 exact PID values
     SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
         .withControlMode(ControlMode.CLOSED_LOOP)
         .withClosedLoopController(
-            15.0, 0, 0,
-            DegreesPerSecond.of(2440),
-            DegreesPerSecondPerSecond.of(2440))
+            15, 0, 0,  // CA26 exact: P=15, I=0, D=0
+            DegreesPerSecond.of(2440),  // CA26 exact velocity
+            DegreesPerSecondPerSecond.of(2440))  // CA26 exact acceleration
         .withFeedforward(new SimpleMotorFeedforward(0, 7.5, 0))
         .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
         .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
@@ -109,6 +109,8 @@ public class TurretSubsystem extends SubsystemBase {
                 .withRelativePosition(TURRET_TRANSLATION));
 
     turret = new Pivot(turretConfig);
+    
+    // CA26 does NOT use a default command - removed to prevent conflicts with aimDynamicCommand
   }
 
   // ==================== COMMANDS ====================
