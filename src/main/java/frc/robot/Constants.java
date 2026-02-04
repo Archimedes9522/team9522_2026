@@ -118,18 +118,19 @@ public final class Constants {
     // === CAN BUS IDs ===
     // Each module has two motors: driving (wheel speed) and turning (wheel angle)
     // Make sure these match your actual wiring!
+    // Numbering: Front Right = 1,2, then counter-clockwise
     
+    // Front Right Module
+    public static final int kFrontRightDrivingCanId = 1;
+    public static final int kFrontRightTurningCanId = 2;
+
     // Front Left Module
     public static final int kFrontLeftDrivingCanId = 3;
     public static final int kFrontLeftTurningCanId = 4;
 
-    // Front Right Module
-    public static final int kFrontRightDrivingCanId = 5;
-    public static final int kFrontRightTurningCanId = 6;
-
     // Rear Left Module
-    public static final int kRearLeftDrivingCanId = 1;
-    public static final int kRearLeftTurningCanId = 2;
+    public static final int kRearLeftDrivingCanId = 5;
+    public static final int kRearLeftTurningCanId = 6;
 
     // Rear Right Module
     public static final int kRearRightDrivingCanId = 7;
@@ -320,20 +321,20 @@ public final class Constants {
     /** Red alliance hub (scoring target) - right side of field */
     RED_HUB(new Translation3d(11.938, 4.034536, 1.5748)),
     
-    /** Red alliance outpost position */
-    RED_OUTPOST(new Translation3d(15.75, 7.25, 0)),
+    /** Red alliance outpost position - moved inward toward center */
+    RED_OUTPOST(new Translation3d(12.5, 6.0, 0)),
     
-    /** Red alliance far side position */
-    RED_FAR_SIDE(new Translation3d(15.75, 0.75, 0)),
+    /** Red alliance far side position - moved inward toward center */
+    RED_FAR_SIDE(new Translation3d(12.5, 2.0, 0)),
 
     /** Blue alliance hub (scoring target) - left side of field */
     BLUE_HUB(new Translation3d(4.5974, 4.034536, 1.5748)),
     
-    /** Blue alliance outpost position */
-    BLUE_OUTPOST(new Translation3d(0.75, 0.75, 0)),
+    /** Blue alliance outpost position - moved inward toward center */
+    BLUE_OUTPOST(new Translation3d(4.0, 2.0, 0)),
     
-    /** Blue alliance far side position */
-    BLUE_FAR_SIDE(new Translation3d(0.75, 7.25, 0));
+    /** Blue alliance far side position - moved inward toward center */
+    BLUE_FAR_SIDE(new Translation3d(4.0, 6.0, 0));
 
     /** The 3D position of this aim point on the field */
     public final Translation3d value;
@@ -447,9 +448,9 @@ public final class Constants {
     // PID gains for position control
     // NOTE: These are tuned for simulation - real robot may need different values
     // TUNING: Increase kP for faster response, decrease if oscillating
-    public static final double kP = 10.0;  // Reduced from 12.0 to reduce overshoot
+    public static final double kP = 10.0;  // Reduced to help with oscillation
     public static final double kI = 0.0;   // Keep at 0 to prevent windup
-    public static final double kD = 0.3;   // Increased from 0.1 to dampen oscillation
+    public static final double kD = 0.3;   // Reduced damping
   }
 
   /**

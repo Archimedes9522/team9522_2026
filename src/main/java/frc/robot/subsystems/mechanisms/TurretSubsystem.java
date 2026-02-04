@@ -80,16 +80,16 @@ public class TurretSubsystem extends SubsystemBase {
 
     // Configure YAMS SmartMotorController - increased velocity/accel for simulation
     // CA26 uses: P=15, I=0, D=0, velocity=2440, accel=2440, ramp=0.1, kV=7.5
-    // NOTE: Increased max velocity/accel for faster response in simulation
-    SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
-        .withControlMode(ControlMode.CLOSED_LOOP)
-        .withClosedLoopController(
-            TurretConstants.kP,  // P for tracking
-            TurretConstants.kI,  // I=0.0
-            TurretConstants.kD,  // D=0.1
-            DegreesPerSecond.of(720),  // Max velocity (2 rev/s) - more realistic
-            DegreesPerSecondPerSecond.of(3600))  // High acceleration for snappy response
-        .withFeedforward(new SimpleMotorFeedforward(0, 0, 0))  // No FF for sim
+    // NOTE: Using pure PID without feedforward for stable simulation
+  SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
+    .withControlMode(ControlMode.CLOSED_LOOP)
+    .withClosedLoopController(
+      TurretConstants.kP,  // P for tracking
+      TurretConstants.kI,  // I=0.0
+      TurretConstants.kD,  // D for damping
+      DegreesPerSecond.of(2440),  // Max velocity - matching CA26
+      DegreesPerSecondPerSecond.of(2440))  // Max acceleration - matching CA26
+        .withFeedforward(new SimpleMotorFeedforward(0, 1.5, 0))  // kV=1.5 feedforward
         .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
         .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
         .withMotorInverted(true)
@@ -101,11 +101,11 @@ public class TurretSubsystem extends SubsystemBase {
 
     motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
 
-    // Configure YAMS Pivot
+    // Configure YAMS Pivot - MOI matching CA26 (0.05)
     PivotConfig turretConfig = new PivotConfig(motorController)
         .withHardLimit(Degrees.of(-MAX_ONE_DIR_FOV - 5), Degrees.of(MAX_ONE_DIR_FOV + 5))
         .withStartingPosition(Degrees.of(0))
-        .withMOI(0.05)  // Moment of inertia for simulation
+        .withMOI(0.05)  // Moment of inertia matching CA26
         .withTelemetry("Turret", TelemetryVerbosity.HIGH)
         .withMechanismPositionConfig(
             new MechanismPositionConfig()
