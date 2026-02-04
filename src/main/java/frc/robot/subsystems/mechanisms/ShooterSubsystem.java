@@ -107,6 +107,22 @@ public class ShooterSubsystem extends SubsystemBase {
   // ==================== COMMANDS ====================
 
   /**
+   * Directly sets the shooter target speed. Call this every loop when doing
+   * dynamic shooting from a command that already requires this subsystem.
+   * 
+   * <p>This method directly controls the motor without creating a command,
+   * so it can be called from within another command's execute() method.
+   * 
+   * @param speed Target angular velocity
+   */
+  public void setTargetSpeed(AngularVelocity speed) {
+    // Log the commanded speed
+    Logger.recordOutput("Shooter/CommandedSpeedRPM", speed.in(RPM));
+    // Use direct motor control instead of scheduling a command to avoid conflicts
+    motorController.setVelocity(speed);
+  }
+
+  /**
    * Sets the shooter to a specific speed.
    * 
    * @param speed Target angular velocity

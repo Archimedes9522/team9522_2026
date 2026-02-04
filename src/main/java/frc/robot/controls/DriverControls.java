@@ -217,11 +217,19 @@ public class DriverControls {
     return Commands.runOnce(() -> {
       SimulatedArena arena = SimulatedArena.getInstance();
 
-      // Get shooter velocity, use minimum test speed if shooter isn't spun up
+      // Get shooter velocity from the actual flywheel speed
       LinearVelocity shooterVelocity = superstructure.getTangentialVelocity();
-      LinearVelocity minTestVelocity = MetersPerSecond.of(15.0); // ~3500 RPM equivalent
-      if (shooterVelocity.lt(minTestVelocity)) {
-        shooterVelocity = minTestVelocity;
+      
+      // Log the actual velocity for debugging
+      Logger.recordOutput("Shooter/ActualTangentialVelocity", shooterVelocity.in(MetersPerSecond));
+      
+      // Minimum velocity to create any shot (prevents zero-velocity projectiles)
+      LinearVelocity minVelocity = MetersPerSecond.of(5.0);
+      if (shooterVelocity.lt(minVelocity)) {
+        shooterVelocity = minVelocity;
+        Logger.recordOutput("Shooter/UsingMinimumVelocity", true);
+      } else {
+        Logger.recordOutput("Shooter/UsingMinimumVelocity", false);
       }
 
       // Create projectile with current shooter parameters
@@ -240,11 +248,20 @@ public class DriverControls {
       // Configure callbacks to visualize the flight trajectory of the projectile
       fuel.withProjectileTrajectoryDisplayCallBack(
           // Callback for when the FUEL will eventually hit the target
-          (poses) -> Logger.recordOutput("FieldSimulation/Shooter/ProjectileSuccessfulShot",
-              poses.toArray(Pose3d[]::new)),
+          (poses) -> {
+            // Log entire trajectory for visualization
+            if (!poses.isEmpty()) {
+              Logger.recordOutput("FieldSimulation/Shooter/ProjectileSuccessfulShot",
+                  poses.toArray(Pose3d[]::new));
+            }
+          },
           // Callback for when the FUEL will miss the target
-          (poses) -> Logger.recordOutput("FieldSimulation/Shooter/ProjectileUnsuccessfulShot",
-              poses.toArray(Pose3d[]::new)));
+          (poses) -> {
+            if (!poses.isEmpty()) {
+              Logger.recordOutput("FieldSimulation/Shooter/ProjectileUnsuccessfulShot",
+                  poses.toArray(Pose3d[]::new));
+            }
+          });
 
       arena.addGamePieceProjectile(fuel);
     }).withName("DriverControls.fireFuel");

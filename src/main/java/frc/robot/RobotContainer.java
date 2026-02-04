@@ -194,6 +194,12 @@ public class RobotContainer {
                                         DriverControls.fireFuel(m_robotDrive, m_superstructure),
                                         Commands.waitSeconds(0.1))
                                 .withName("AutoFire.repeating"));
+                } else {
+                        // Register placeholders for real robot (actual shooting uses feedAll)
+                        NamedCommands.registerCommand("fireFuel", 
+                                m_superstructure.feedAllCommand().withTimeout(0.5));
+                        NamedCommands.registerCommand("fireFuelRepeating",
+                                m_superstructure.feedAllCommand());
                 }
                 
                 // ==================== CONTROLLER BINDINGS ====================

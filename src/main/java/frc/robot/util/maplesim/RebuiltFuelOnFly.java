@@ -14,8 +14,8 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
+import edu.wpi.first.wpilibj.DriverStation;
 import org.ironmaple.simulation.gamepieces.GamePieceProjectile;
-import org.ironmaple.utils.FieldMirroringUtils;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -29,8 +29,20 @@ import org.littletonrobotics.junction.Logger;
  */
 public class RebuiltFuelOnFly extends GamePieceProjectile {
 
-  /** Red hub position on the field (target for shooting) */
+  /** Red hub position on the field (target for shooting) - 62" to bottom of opening */
   private static final Translation3d RED_HUB_POSITION = new Translation3d(11.938, 4.034536, 1.5748);
+  
+  /** Blue hub position on the field */
+  private static final Translation3d BLUE_HUB_POSITION = new Translation3d(4.5974, 4.034536, 1.5748);
+
+  /**
+   * Gets the hub position for the current alliance.
+   */
+  private static Translation3d getAllianceHub() {
+    return DriverStation.getAlliance()
+        .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_HUB_POSITION : BLUE_HUB_POSITION)
+        .orElse(RED_HUB_POSITION);
+  }
 
   /**
    * Creates a new FUEL projectile.
@@ -64,18 +76,18 @@ public class RebuiltFuelOnFly extends GamePieceProjectile {
     // FUEL touches ground at 3 inches (radius)
     super.withTouchGroundHeight(Inches.of(3).in(Meters));
 
-    // Target is the hub (auto-mirrors for alliance)
-    super.withTargetPosition(
-        () -> FieldMirroringUtils.toCurrentAllianceTranslation(RED_HUB_POSITION));
+    // Target is the hub based on current alliance
+    super.withTargetPosition(() -> getAllianceHub());
 
-    Logger.recordOutput("HubGoal", RED_HUB_POSITION);
+    Logger.recordOutput("HubGoal", getAllianceHub());
 
-    // Tolerance for hitting the hub (23.5" x 23.5" opening, 1" height tolerance)
+    // Tolerance for hitting the hub
+    // X/Y: 23.5" opening radius, Z: 24" height tolerance (ball can enter from above)
     super.withTargetTolerance(
         new Translation3d(
             Inches.of(23.5).in(Meters),
             Inches.of(23.5).in(Meters),
-            Inches.of(1).in(Meters)));
+            Inches.of(24).in(Meters)));  // Increased from 1" to 24" for better detection
 
     // If the FUEL misses, it becomes a ground game piece
     super.enableBecomesGamePieceOnFieldAfterTouchGround();

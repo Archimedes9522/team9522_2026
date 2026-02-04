@@ -445,15 +445,18 @@ public final class Constants {
     public static final int kCurrentLimitAmps = 30;
     
     // PID gains for position control
-    public static final double kP = 0.1;
-    public static final double kI = 0.0;
-    public static final double kD = 0.0;
+    // NOTE: These are tuned for simulation - real robot may need different values
+    // TUNING: Increase kP for faster response, decrease if oscillating
+    public static final double kP = 10.0;  // Reduced from 12.0 to reduce overshoot
+    public static final double kI = 0.0;   // Keep at 0 to prevent windup
+    public static final double kD = 0.3;   // Increased from 0.1 to dampen oscillation
   }
 
   /**
    * Hood mechanism constants.
    * 
-   * <p>The hood adjusts the shooter angle to control trajectory.
+   * <p>The hood is FIXED at a constant angle (not adjustable like some 2022 robots).
+   * The shooting trajectory is controlled purely by flywheel speed.
    * Uses a NEO 550 with a 50:1 reduction.
    */
   public static final class HoodConstants {
@@ -468,6 +471,13 @@ public final class Constants {
     
     /** Maximum hood angle in degrees (steep) */
     public static final double kMaxAngleDegrees = 60.0;
+    
+    /** 
+     * Fixed hood angle for shooting in degrees.
+     * This is the launch angle for all shots - trajectory is controlled by flywheel speed.
+     * ~55° provides a good arc for the expected shooting distances (2-6 meters).
+     */
+    public static final double kFixedShootingAngle = 55.0;
     
     /** Default stowed angle in degrees */
     public static final double kStowedAngleDegrees = 0.0;

@@ -3,11 +3,11 @@
     {
       "x": -8,
       "y": -8,
-      "width": 2576,
-      "height": 1416,
+      "width": 1296,
+      "height": 768,
       "state": {
         "sidebar": {
-          "width": 344,
+          "width": 346,
           "expanded": [
             "/SmartDashboard/MapleSim/MatchData/Breakdown/blue Alliance",
             "/SmartDashboard/swerve/advantagescope/currentStates/1/angle",
@@ -49,7 +49,14 @@
             "/SmartDashboard/Turret",
             "/SmartDashboard/Turret/mechanism",
             "/AdvantageKit",
-            "/AdvantageKit/RealOutputs"
+            "/AdvantageKit/RealOutputs",
+            "/RealOutputs",
+            "/RealOutputs/FieldSimulation",
+            "/RealOutputs/Odometry",
+            "/RealOutputs/ASCalibration",
+            "/RealOutputs/Superstructure",
+            "/RealOutputs/ShootOnTheMove",
+            "/RealOutputs/Shooter"
           ]
         },
         "tabs": {
@@ -70,23 +77,16 @@
                 "sources": [
                   {
                     "type": "robot",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/FieldSimulation/RobotPose",
-                    "logType": "Pose2d",
+                    "logKey": "/RealOutputs/Odometry/Robot3d",
+                    "logType": "Pose3d",
                     "visible": true,
                     "options": {
                       "model": "2026 CA26"
                     }
                   },
                   {
-                    "type": "component",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/ASCalibration/FinalComponentPoses",
-                    "logType": "Pose3d[]",
-                    "visible": true,
-                    "options": {}
-                  },
-                  {
                     "type": "vision",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/FieldSimulation/AimTarget",
+                    "logKey": "/RealOutputs/FieldSimulation/AimTarget",
                     "logType": "Pose3d",
                     "visible": true,
                     "options": {
@@ -95,40 +95,39 @@
                     }
                   },
                   {
+                    "type": "component",
+                    "logKey": "/RealOutputs/ASCalibration/FinalComponentPoses",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
                     "type": "gamePiece",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/FieldSimulation/FuelPoses",
+                    "logKey": "/RealOutputs/FieldSimulation/FuelPoses",
                     "logType": "Pose3d[]",
                     "visible": true,
                     "options": {
-                      "model": "2017 Fuel",
-                      "color": "#ff6600",
                       "variant": "Fuel"
                     }
                   },
                   {
                     "type": "trajectory",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/FieldSimulation/Shooter/ProjectileSuccessfulShot",
+                    "logKey": "/RealOutputs/FieldSimulation/Shooter/ProjectileSuccessfulShot",
                     "logType": "Pose3d[]",
                     "visible": true,
                     "options": {
                       "color": "#00ff00",
-                      "dimensions": [
-                        0.1,
-                        0.1
-                      ]
+                      "size": "normal"
                     }
                   },
                   {
                     "type": "trajectory",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/FieldSimulation/Shooter/ProjectileUnsuccessfulShot",
+                    "logKey": "/RealOutputs/FieldSimulation/Shooter/ProjectileUnsuccessfulShot",
                     "logType": "Pose3d[]",
                     "visible": true,
                     "options": {
                       "color": "#ff0000",
-                      "dimensions": [
-                        0.1,
-                        0.1
-                      ]
+                      "size": "normal"
                     }
                   }
                 ],
@@ -139,14 +138,14 @@
                 "cameraIndex": -1,
                 "orbitFov": 50,
                 "cameraPosition": [
-                  8.043015506975262,
-                  6.706920397003629,
-                  -7.436304154659467
+                  9.949232250237415,
+                  4.932486695804485,
+                  -1.523742435135308
                 ],
                 "cameraTarget": [
-                  2.20426050088226,
-                  -3.7454606536114197,
-                  2.6540000455420887
+                  2.4434174686871186,
+                  -0.6384359378140667,
+                  -1.558444166307554
                 ]
               },
               "controlsHeight": 329
@@ -168,7 +167,7 @@
                 "leftSources": [
                   {
                     "type": "stepped",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/Superstructure/TargetTurretAngle",
+                    "logKey": "/RealOutputs/Superstructure/TargetTurretAngle",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -178,11 +177,11 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/Superstructure/ActualTurretAngle",
+                    "logKey": "/RealOutputs/Superstructure/ActualTurretAngle",
                     "logType": "Number",
                     "visible": true,
                     "options": {
-                      "color": "#e5b31b",
+                      "color": "#af2437",
                       "size": "normal"
                     }
                   }
@@ -203,6 +202,71 @@
                 "rightFilter": 0
               },
               "controllerUUID": "at9a72uj5sbz6zdwqcybqtno9uqe3vmw",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 1,
+              "title": "Line Graph",
+              "controller": {
+                "leftSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/ShootOnTheMove/CorrectiveX",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/ShootOnTheMove/CorrectiveY",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/ShootOnTheMove/RobotVelX",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/ShootOnTheMove/RobotVelY",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [],
+                "discreteSources": [],
+                "leftLockedRange": null,
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "4819q0ye9ciggy207avf6t4io88qdw4a",
               "renderer": null,
               "controlsHeight": 200
             },
@@ -252,28 +316,7 @@
               "type": 1,
               "title": "Commands",
               "controller": {
-                "leftSources": [
-                  {
-                    "type": "stepped",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/Superstructure/TargetTurretAngle",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#3b875a",
-                      "size": "verybold"
-                    }
-                  },
-                  {
-                    "type": "stepped",
-                    "logKey": "NT:/AdvantageKit/RealOutputs/Superstructure/ActualTurretAngle",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#af2437",
-                      "size": "verybold"
-                    }
-                  }
-                ],
+                "leftSources": [],
                 "rightSources": [],
                 "discreteSources": [],
                 "leftLockedRange": null,

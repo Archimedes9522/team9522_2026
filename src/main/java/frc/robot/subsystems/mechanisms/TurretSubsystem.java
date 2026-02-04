@@ -78,22 +78,26 @@ public class TurretSubsystem extends SubsystemBase {
     // Initialize motor
     spark = new SparkMax(TurretConstants.kMotorId, MotorType.kBrushless);
 
-    // Configure YAMS SmartMotorController - CA26 exact PID values
+    // Configure YAMS SmartMotorController - increased velocity/accel for simulation
+    // CA26 uses: P=15, I=0, D=0, velocity=2440, accel=2440, ramp=0.1, kV=7.5
+    // NOTE: Increased max velocity/accel for faster response in simulation
     SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
         .withControlMode(ControlMode.CLOSED_LOOP)
         .withClosedLoopController(
-            15, 0, 0,  // CA26 exact: P=15, I=0, D=0
-            DegreesPerSecond.of(2440),  // CA26 exact velocity
-            DegreesPerSecondPerSecond.of(2440))  // CA26 exact acceleration
-        .withFeedforward(new SimpleMotorFeedforward(0, 7.5, 0))
+            TurretConstants.kP,  // P for tracking
+            TurretConstants.kI,  // I=0.0
+            TurretConstants.kD,  // D=0.1
+            DegreesPerSecond.of(720),  // Max velocity (2 rev/s) - more realistic
+            DegreesPerSecondPerSecond.of(3600))  // High acceleration for snappy response
+        .withFeedforward(new SimpleMotorFeedforward(0, 0, 0))  // No FF for sim
         .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
         .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
         .withMotorInverted(true)
-        .withIdleMode(MotorMode.COAST)
+        .withIdleMode(MotorMode.COAST)  // CA26 uses COAST
         .withSoftLimit(Degrees.of(-MAX_ONE_DIR_FOV), Degrees.of(MAX_ONE_DIR_FOV))
-        .withStatorCurrentLimit(Amps.of(TurretConstants.kCurrentLimitAmps))
-        .withClosedLoopRampRate(Seconds.of(0.1))
-        .withOpenLoopRampRate(Seconds.of(0.1));
+        .withStatorCurrentLimit(Amps.of(40))  // Increased from 10A for faster response
+        .withClosedLoopRampRate(Seconds.of(0))  // Remove ramp for faster response
+        .withOpenLoopRampRate(Seconds.of(0));
 
     motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
 
@@ -114,6 +118,23 @@ public class TurretSubsystem extends SubsystemBase {
   }
 
   // ==================== COMMANDS ====================
+
+  /**
+   * Directly sets the turret target angle. Call this every loop when doing
+   * dynamic aiming from a command that already requires this subsystem.
+   * 
+   * <p>This method directly controls the motor without creating a command,
+   * so it can be called from within another command's execute() method.
+   * 
+   * @param angle Target angle (0 = forward, positive = left, negative = right)
+   */
+  public void setTargetAngle(Angle angle) {
+    // Clamp to soft limits
+    double angleDeg = angle.in(Degrees);
+    double clampedDeg = Math.max(-MAX_ONE_DIR_FOV, Math.min(MAX_ONE_DIR_FOV, angleDeg));
+    // Use direct motor control instead of scheduling a command to avoid conflicts
+    motorController.setPosition(Degrees.of(clampedDeg));
+  }
 
   /**
    * Sets the turret to a specific angle.

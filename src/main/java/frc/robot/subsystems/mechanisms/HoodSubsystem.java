@@ -102,6 +102,24 @@ public class HoodSubsystem extends SubsystemBase {
   // ==================== COMMANDS ====================
 
   /**
+   * Directly sets the hood target angle. Call this every loop when doing
+   * dynamic aiming from a command that already requires this subsystem.
+   * 
+   * <p>This method directly controls the motor without creating a command,
+   * so it can be called from within another command's execute() method.
+   * 
+   * @param angle Target angle (0° = flat, higher = steeper)
+   */
+  public void setTargetAngle(Angle angle) {
+    // Clamp to soft limits
+    double angleDeg = angle.in(Degrees);
+    double clampedDeg = Math.max(HoodConstants.kMinAngleDegrees, 
+                                  Math.min(HoodConstants.kMaxAngleDegrees, angleDeg));
+    // Use direct motor control instead of scheduling a command to avoid conflicts
+    motorController.setPosition(Degrees.of(clampedDeg));
+  }
+
+  /**
    * Sets the hood to a specific angle.
    * 
    * @param angle Target angle (0° = flat, higher = steeper)
