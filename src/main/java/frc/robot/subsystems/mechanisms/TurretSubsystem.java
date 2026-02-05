@@ -9,6 +9,7 @@ import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
@@ -17,6 +18,10 @@ import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
 
+import com.ctre.phoenix6.hardware.CANcoder;
+import com.ctre.phoenix6.configs.CANcoderConfiguration;
+import com.ctre.phoenix6.configs.MagnetSensorConfigs;
+import com.ctre.phoenix6.signals.SensorDirectionValue;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 
@@ -29,6 +34,7 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants;
 import frc.robot.Constants.TurretConstants;
 import yams.gearing.GearBox;
 import yams.gearing.MechanismGearing;
@@ -51,10 +57,14 @@ import yams.motorcontrollers.local.SparkWrapper;
  * 
  * <p>Hardware:
  * <ul>
- *   <li>1x NEO motor</li>
+ *   <li>1x NEO motor (Spark MAX)</li>
+ *   <li>1x CANcoder for absolute position sensing</li>
  *   <li>40:1 gear reduction (4:1 gearbox × 10:1 pivot gearing)</li>
  *   <li>Non-continuous rotation (limited travel)</li>
  * </ul>
+ * 
+ * <p>The CANcoder provides absolute position so the turret knows its true
+ * position on startup without needing to be homed/zeroed.
  */
 public class TurretSubsystem extends SubsystemBase {
 
@@ -63,13 +73,25 @@ public class TurretSubsystem extends SubsystemBase {
   
   /** Turret position relative to robot center (meters) */
   public static final Translation3d TURRET_TRANSLATION = new Translation3d(-0.205, 0.0, 0.375);
+  
+  /** 
+   * CANcoder magnet offset - calibrate this value so that CANcoder reads 0 
+   * when the turret is physically centered (pointing forward on robot).
+   * To calibrate: physically center turret, read CANcoder absolute position, 
+   * set this value to the negative of what you read.
+   */
+  private static final double CANCODER_MAGNET_OFFSET_ROTATIONS = 0.0;
 
-  // === MOTORS ===
+  // === HARDWARE ===
   private final SparkMax spark;
+  private final CANcoder canCoder;
 
   // === YAMS CONTROLLER ===
   private final SmartMotorController motorController;
   private final Pivot turret;
+  
+  /** Flag to track if we've synced the NEO encoder with CANcoder */
+  private boolean hasBeenSynced = false;
 
   /**
    * Creates a new TurretSubsystem.
@@ -77,6 +99,10 @@ public class TurretSubsystem extends SubsystemBase {
   public TurretSubsystem() {
     // Initialize motor
     spark = new SparkMax(TurretConstants.kMotorId, MotorType.kBrushless);
+    
+    // Initialize CANcoder for absolute position sensing
+    canCoder = new CANcoder(TurretConstants.kEncoderId);
+    configureCANcoder();
 
     // Configure YAMS SmartMotorController - increased velocity/accel for simulation
     // CA26 uses: P=15, I=0, D=0, velocity=2440, accel=2440, ramp=0.1, kV=7.5
@@ -102,9 +128,15 @@ public class TurretSubsystem extends SubsystemBase {
     motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
 
     // Configure YAMS Pivot - MOI matching CA26 (0.05)
+    // Get starting position from CANcoder if on real robot
+    Angle startingPosition = Degrees.of(0);
+    if (Constants.currentMode == Constants.Mode.REAL) {
+      startingPosition = getCANcoderAbsolutePosition();
+    }
+    
     PivotConfig turretConfig = new PivotConfig(motorController)
         .withHardLimit(Degrees.of(-MAX_ONE_DIR_FOV - 5), Degrees.of(MAX_ONE_DIR_FOV + 5))
-        .withStartingPosition(Degrees.of(0))
+        .withStartingPosition(startingPosition)
         .withMOI(0.05)  // Moment of inertia matching CA26
         .withTelemetry("Turret", TelemetryVerbosity.HIGH)
         .withMechanismPositionConfig(
@@ -114,7 +146,66 @@ public class TurretSubsystem extends SubsystemBase {
 
     turret = new Pivot(turretConfig);
     
+    // Sync NEO encoder with CANcoder absolute position on startup
+    if (Constants.currentMode == Constants.Mode.REAL) {
+      syncEncoderWithCANcoder();
+    }
+    
     // CA26 does NOT use a default command - removed to prevent conflicts with aimDynamicCommand
+  }
+  
+  /**
+   * Configures the CANcoder for absolute position sensing.
+   */
+  private void configureCANcoder() {
+    CANcoderConfiguration config = new CANcoderConfiguration();
+    
+    // Configure magnet sensor
+    MagnetSensorConfigs magnetConfig = new MagnetSensorConfigs();
+    magnetConfig.MagnetOffset = CANCODER_MAGNET_OFFSET_ROTATIONS;
+    magnetConfig.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
+    // AbsoluteSensorRange is now automatic in Phoenix 6 - it's always ±0.5 rotations
+    
+    config.MagnetSensor = magnetConfig;
+    
+    // Apply configuration
+    canCoder.getConfigurator().apply(config);
+  }
+  
+  /**
+   * Gets the absolute position from the CANcoder.
+   * This survives power cycles and always knows the true turret position.
+   * 
+   * @return Absolute turret angle
+   */
+  public Angle getCANcoderAbsolutePosition() {
+    // CANcoder returns position in rotations, convert to degrees
+    double rotations = canCoder.getAbsolutePosition().getValueAsDouble();
+    return Degrees.of(rotations * 360.0);
+  }
+  
+  /**
+   * Syncs the NEO's relative encoder with the CANcoder's absolute position.
+   * Call this on startup or if drift is detected.
+   */
+  public void syncEncoderWithCANcoder() {
+    Angle absolutePosition = getCANcoderAbsolutePosition();
+    // Convert to motor rotations (accounting for gear ratio)
+    double turretDegrees = absolutePosition.in(Degrees);
+    double motorRotations = turretDegrees / 360.0 * TurretConstants.kGearRatio;
+    spark.getEncoder().setPosition(motorRotations);
+    hasBeenSynced = true;
+    Logger.recordOutput("Turret/SyncedToCANcoder", turretDegrees);
+  }
+  
+  /**
+   * Command to sync the encoder with CANcoder.
+   * 
+   * @return Command that performs the sync
+   */
+  public Command syncWithCANcoder() {
+    return Commands.runOnce(this::syncEncoderWithCANcoder, this)
+        .withName("Turret.SyncWithCANcoder");
   }
 
   // ==================== COMMANDS ====================
@@ -237,6 +328,8 @@ public class TurretSubsystem extends SubsystemBase {
 
     // Log turret pose for AdvantageScope 3D visualization
     Logger.recordOutput("Turret/AngleDegrees", getRawAngle().in(Degrees));
+    Logger.recordOutput("Turret/CANcoderAngleDegrees", getCANcoderAbsolutePosition().in(Degrees));
+    Logger.recordOutput("Turret/HasBeenSynced", hasBeenSynced);
     Logger.recordOutput("ASCalibration/FinalComponentPoses", new Pose3d[] {
         new Pose3d(
             TURRET_TRANSLATION,
