@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
+import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -130,6 +131,9 @@ public class Robot extends LoggedRobot {
     // Create RobotContainer - this initializes all subsystems and bindings
     m_robotContainer = new RobotContainer();
     setupSmartDashboard();
+    
+    // Port forward PhotonVision web interface through the RoboRIO for debugging
+    PortForwarder.add(5800, "photonvision.local", 5800);
   }
 
   /**
