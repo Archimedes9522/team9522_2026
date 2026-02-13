@@ -424,14 +424,15 @@ public final class Constants {
    * Turret mechanism constants.
    * 
    * <p>The turret rotates the shooter ±90° to aim at the hub.
-   * Uses a NEO motor with a 40:1 reduction and CANcoder for absolute position.
+   * Uses a NEO motor with a 40:1 reduction and REV Through Bore Encoder for absolute position.
+   * The Through Bore Encoder plugs directly into the Spark MAX data port.
    */
   public static final class TurretConstants {
     /** CAN ID for the turret motor */
     public static final int kMotorId = 17;
     
-    /** CAN ID for the CANcoder (absolute encoder) */
-    public static final int kEncoderId = 18;
+    // NOTE: kEncoderId is no longer needed - REV Through Bore Encoder
+    // plugs directly into the Spark MAX data port (no CAN ID required)
     
     /** Total gear reduction from motor to turret output */
     public static final double kGearRatio = 40.0;
