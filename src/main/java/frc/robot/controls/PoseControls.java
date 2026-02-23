@@ -10,6 +10,8 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants;
@@ -61,7 +63,7 @@ public class PoseControls {
     // Continuous joystick control for target pose adjustment
     // Left stick: X/Y translation, Right stick X: Rotation
     // Using ignoringDisable(true) so it runs even when disabled
-    Commands.run(() -> {
+    Command poseUpdateCmd = Commands.run(() -> {
       double leftX = controller.getLeftX();
       double leftY = controller.getLeftY();
       double rightX = controller.getRightX();
@@ -74,33 +76,25 @@ public class PoseControls {
       if (Math.abs(rightX) < Constants.ControllerConstants.kDeadband)
         rightX = 0;
 
-      // Alliance-relative controls:
-      // Forward (negative leftY) should move away from driver station
-      // Blue alliance: driver station at x=0, so forward = +X
-      // Red alliance: driver station at x=16.5m, so forward = -X (flip X direction)
-      // Left (negative leftX) should move toward left side of field from driver POV
-      // Blue alliance: left = +Y
-      // Red alliance: left = -Y (flip Y direction)
+      // Alliance-relative controls
       boolean isRedAlliance = DriverStation.getAlliance()
           .map(alliance -> alliance == DriverStation.Alliance.Red)
           .orElse(false);
 
       double allianceMultiplier = isRedAlliance ? -1.0 : 1.0;
 
-      // Adjust target pose based on joystick input (alliance-relative)
       if (leftX != 0 || leftY != 0) {
-        // -leftY = forward motion, leftX = strafe right
-        // Apply alliance multiplier to make controls relative to driver station
         adjustTargetTranslation(
-            -leftY * TRANSLATION_SPEED * allianceMultiplier, // Forward/back -> X
-            -leftX * TRANSLATION_SPEED * allianceMultiplier); // Left/right -> Y
+            -leftY * TRANSLATION_SPEED * allianceMultiplier,
+            -leftX * TRANSLATION_SPEED * allianceMultiplier);
       }
       if (rightX != 0) {
         adjustTargetRotation(-rightX * ROTATION_SPEED);
       }
 
       updateFieldPose(drivetrain);
-    }).ignoringDisable(true).withName("PoseControls.Update").schedule();
+    }).ignoringDisable(true).withName("PoseControls.Update");
+    CommandScheduler.getInstance().schedule(poseUpdateCmd);
 
     // Y button: Reset target pose to robot's current position
     controller.y().onTrue(Commands.runOnce(() -> {

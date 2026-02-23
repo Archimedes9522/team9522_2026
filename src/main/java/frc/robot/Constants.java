@@ -33,6 +33,18 @@ import edu.wpi.first.wpilibj.DriverStation;
  */
 public final class Constants {
 
+  // === CHASSIS-ONLY MODE ===
+  /**
+   * Set to true when running on a bare chassis with no mechanism motors connected.
+   * This prevents the robot from trying to initialize SparkMax controllers for
+   * motors that don't exist on the CAN bus (IDs 15-23), which would cause
+   * ~30 second timeouts PER MOTOR and result in 5+ minute startup times.
+   * 
+   * Set to false once mechanisms (shooter, turret, hood, intake, hopper, kicker)
+   * are physically wired and connected.
+   */
+  public static final boolean kChassisOnly = true;
+
   // === CONTROLLER BUTTON MAPPINGS ===
   /** Right bumper puts the swerve drive into X-stance (wheels pointed inward to resist pushing) */
   public static final int kSetXButton = XboxController.Button.kRightBumper.value;
@@ -52,6 +64,13 @@ public final class Constants {
   public static final Rotation2d zeroRotation2d = new Rotation2d();
   public static final Pose2d zeroPose2d = new Pose2d();
   public static final Pose3d zeroPose3d = new Pose3d();
+  
+  // === ROBOT PHYSICAL PROPERTIES ===
+  /** Robot mass in pounds — matches physicalproperties.json robotMass */
+  public static final double kRobotMassLbs = 120;
+  
+  /** Robot mass in kilograms (for WPILib/PathPlanner APIs) */
+  public static final double kRobotMassKg = Units.lbsToKilograms(kRobotMassLbs);
 
   /**
    * Robot operating modes for AdvantageKit logging.
@@ -70,11 +89,26 @@ public final class Constants {
   /**
    * Constants for the swerve drive subsystem.
    * 
-   * <p>Includes physical dimensions, speed limits, module positions, and CAN IDs.
+   * <p>The swerve drive is configured via YAGSL JSON files in {@code src/main/deploy/swerve/}.
+   * These Java constants should match the values in those JSON files for consistency.
+   * 
+   * <p>Cross-reference with YAGSL config:
+   * <ul>
+   *   <li>{@code kMaxSpeedMetersPerSecond} → passed to {@code SwerveParser.createSwerveDrive(maximumSpeed)}</li>
+   *   <li>{@code kTrackWidth}, {@code kWheelBase} → module {@code location} fields (inches from center)</li>
+   *   <li>CAN IDs → module JSON {@code drive.id} and {@code angle.id} fields</li>
+   *   <li>Current limits → {@code physicalproperties.json} {@code currentLimit} (40A drive, 20A angle)</li>
+   *   <li>Gear ratios → {@code physicalproperties.json} {@code conversionFactors}</li>
+   * </ul>
+   * 
+   * <p><b>NOTE:</b> CAN IDs here may differ from YAGSL module JSONs — YAGSL JSON files
+   * are the source of truth for the actual hardware wiring. These constants are kept
+   * for reference and for any code that reads them directly.
    */
   public static final class DriveConstants {
     // === SPEED LIMITS ===
     // Note: These are the ALLOWED maximums, not the theoretical maximums
+    // Matches SwerveSubsystem.maximumSpeed = Units.feetToMeters(15.76) ≈ 4.8 m/s
     
     /** Maximum driving speed in meters per second */
     public static final double kMaxSpeedMetersPerSecond = 4.8;
@@ -85,12 +119,13 @@ public final class Constants {
     // === CHASSIS DIMENSIONS ===
     // These measurements are between wheel CENTERS, not frame edges
     // Frame size is 27.5" (front-to-back) x 25.5" (side-to-side), with 3.5" inset to wheel centers
+    // Matches YAGSL module locations: front=±12", left=±11" (i.e. 24" x 22" between centers)
     
     /** Distance between left and right wheel centers (side to side) - frame is 25.5" wide */
-    public static final double kTrackWidth = Units.inchesToMeters(22);
+    public static final double kTrackWidth = Units.inchesToMeters(22);  // YAGSL: left=±11"
     
     /** Distance between front and back wheel centers (front to back) - frame is 27.5" long */
-    public static final double kWheelBase = Units.inchesToMeters(24);
+    public static final double kWheelBase = Units.inchesToMeters(24);   // YAGSL: front=±12"
     
     /**
      * Kinematics object that converts chassis speeds to individual module states.
@@ -141,10 +176,22 @@ public final class Constants {
   }
 
   /**
-   * Constants for individual swerve modules (MAXSwerve-specific).
+   * Constants for individual swerve modules (MAXSwerve 13T configuration).
    * 
-   * <p>These values are used to calculate encoder conversion factors
-   * and determine theoretical maximum speeds.
+   * <p><b>NOTE:</b> These are NOT used by YAGSL — the swerve drive is configured
+   * entirely from JSON files in {@code src/main/deploy/swerve/}. These constants are
+   * kept here for reference and to verify that the YAGSL config matches expectations.
+   * 
+   * <p>Cross-reference with {@code physicalproperties.json}:
+   * <ul>
+   *   <li>Wheel diameter: 3" → {@code drive.diameter: 3}</li>
+   *   <li>Drive gear ratio: 5.50:1 (13T pinion) → {@code drive.gearRatio: 5.50}</li>
+   *   <li>Angle gear ratio: 46.42:1 → {@code angle.gearRatio: 46.42}</li>
+   *   <li>Drive current limit: 40A → {@code currentLimit.drive: 40}</li>
+   *   <li>Angle current limit: 20A → {@code currentLimit.angle: 20}</li>
+   * </ul>
+   * 
+   * @see <a href="https://docs.yagsl.com/configuring-yagsl/standard-conversion-factors">YAGSL Standard Conversion Factors - MAX Swerve 13T</a>
    */
   public static final class ModuleConstants {
     /** Number of teeth on the driving motor's pinion gear (changes speed/torque ratio) */
@@ -205,28 +252,19 @@ public final class Constants {
   }
 
   /**
-   * Operator Interface constants (controllers and inputs).
-   */
-  public static final class OIConstants {
-    /** USB port number for the driver's Xbox controller */
-    public static final int kDriverControllerPort = 0;
-    
-    /** Joystick deadband - inputs below this are ignored (prevents drift) */
-    public static final double kDriveDeadband = 0.1;
-    
-    /** Threshold for trigger buttons to register as pressed */
-    public static final double kTriggerButtonThreshold = 0.2;
-    
-    /** 
-     * Speed multiplier for driving (0.0 to 1.0).
-     * CA26 uses full speed (1.0) with 14.5 ft/s max.
-     * Our max is 15.76 ft/s (~4.8 m/s) so 1.0 = full speed.
-     */
-    public static final double kDriveSpeedFactor = 1.0;
-  }
-
-  /**
    * Autonomous mode constants for trajectory following.
+   * 
+   * <p>These values should match what is configured in {@code SwerveSubsystem}'s
+   * PathPlanner {@code AutoBuilder.configure()} call. Update both places if changed.
+   * 
+   * <p>The {@code RobotConfig} is loaded from PathPlanner GUI settings
+   * ({@code deploy/pathplanner/settings.json}).
+   * 
+   * <p>Cross-reference with {@code SwerveSubsystem.java} PathPlanner config:
+   * <ul>
+   *   <li>Translation PID: P=5.0, I=0.0, D=0.0</li>
+   *   <li>Rotation PID: P=5.0, I=0.0, D=0.0</li>
+   * </ul>
    */
   public static final class AutoConstants {
     /** Maximum speed during autonomous paths */
@@ -240,14 +278,13 @@ public final class Constants {
     public static final double kMaxAngularSpeedRadiansPerSecondSquared = Math.PI;
 
     // === PID GAINS FOR PATH FOLLOWING ===
-    /** X position correction gain */
-    public static final double kPXController = 1;
+    // These match the values in SwerveSubsystem's PPHolonomicDriveController
     
-    /** Y position correction gain */
-    public static final double kPYController = 1;
+    /** Translation correction gain (X and Y) — matches PathPlanner AutoBuilder config */
+    public static final double kPTranslation = 5.0;
     
-    /** Rotation correction gain (usually higher since angle errors are more noticeable) */
-    public static final double kPThetaController = 5;
+    /** Rotation correction gain — matches PathPlanner AutoBuilder config */
+    public static final double kPRotation = 5.0;
 
     /** Motion profile constraints for rotation controller */
     public static final TrapezoidProfile.Constraints kThetaControllerConstraints = new TrapezoidProfile.Constraints(
@@ -279,7 +316,6 @@ public final class Constants {
 
   /**
    * Controller constants for driver and operator input.
-   * Separated from OIConstants for cleaner organization.
    */
   public static final class ControllerConstants {
     /** USB port number for the driver's Xbox controller */

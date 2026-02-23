@@ -88,16 +88,14 @@ public class OperatorControls {
     // ==================== FEEDING CONTROLS ====================
     
     // A Button: Feed all (run hopper and kicker forward)
-    // Stops feeding when released
     controller.a()
         .whileTrue(superstructure.feedAllCommand()
-            .finallyDo(() -> superstructure.stopFeedingAllCommand().schedule()));
+            .withName("OperatorControls.feedAll"));
     
     // B Button: Back feed (reverse hopper and kicker to clear jams)
-    // Stops when released
     controller.b()
         .whileTrue(superstructure.backFeedAllCommand()
-            .finallyDo(() -> superstructure.stopFeedingAllCommand().schedule()));
+            .withName("OperatorControls.backFeed"));
     
     // ==================== TURRET CONTROLS ====================
     

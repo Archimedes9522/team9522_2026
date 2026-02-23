@@ -29,6 +29,7 @@ import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DriveConstants;
 import swervelib.SwerveInputStream;
 import swervelib.SwerveDrive;
@@ -118,6 +119,12 @@ public class SwerveSubsystem extends SubsystemBase {
     // Cosine compensation improves accuracy at high angles, but causes discrepancies in simulation
     swerveDrive.setCosineCompensator(!RobotBase.isSimulation());
     
+    // Periodically re-synchronize absolute encoders with motor encoders when modules
+    // are not moving. This corrects any drift in the integrated encoder over time.
+    // The "3" is the number of degrees of tolerance before a sync is triggered.
+    // (From CA26 — one of the key advantages of YAGSL over MAXSwerve template)
+    swerveDrive.setModuleEncoderAutoSynchronize(true, 3);
+    
     // ==================== PATHPLANNER CONFIGURATION ====================
     try {
       config = RobotConfig.fromGUISettings();
@@ -134,10 +141,10 @@ public class SwerveSubsystem extends SubsystemBase {
         // Drive with speeds (robot-relative)
         (speeds, feedforwards) -> driveRobotRelative(speeds),
         
-        // Holonomic path controller
+        // Holonomic path controller — PID values from AutoConstants
         new PPHolonomicDriveController(
-            new PIDConstants(5.0, 0.0, 0.0), // Translation PID
-            new PIDConstants(5.0, 0.0, 0.0)  // Rotation PID
+            new PIDConstants(AutoConstants.kPTranslation, 0.0, 0.0), // Translation PID
+            new PIDConstants(AutoConstants.kPRotation, 0.0, 0.0)     // Rotation PID
         ),
         config,
         

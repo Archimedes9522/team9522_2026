@@ -56,6 +56,7 @@ public class Robot extends LoggedRobot {
   private boolean comingFromAuto = false;
   
   /** NavX gyroscope for heading - connected via MXP SPI port */
+  @SuppressWarnings("unused") // Used indirectly by YAGSL via swervedrive.json config
   private final AHRS m_gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
   
   /** Container for all subsystems, commands, and button bindings */
@@ -155,8 +156,10 @@ public class Robot extends LoggedRobot {
     // Log field simulation data for AdvantageScope 3D visualization
     Logger.recordOutput("FieldSimulation/RobotPose", m_robotContainer.getRobotPose());
     Logger.recordOutput("FieldSimulation/AimDirection", m_robotContainer.getAimDirection());
-    Logger.recordOutput("FieldSimulation/AimTarget", 
-        new Pose3d(m_robotContainer.getAimPoint(), Rotation3d.kZero));
+    if (m_robotContainer.getSuperstructure() != null) {
+      Logger.recordOutput("FieldSimulation/AimTarget", 
+          new Pose3d(m_robotContainer.getAimPoint(), Rotation3d.kZero));
+    }
     
     // Update dashboard displays
     updateSmartDashboard();
@@ -168,11 +171,12 @@ public class Robot extends LoggedRobot {
   /** Called once when autonomous mode starts */
   @Override
   public void autonomousInit() {
-    // Mark that we're running auto (so teleop knows not to reset pose)
     comingFromAuto = true;
     
-    // Update aim point based on current alliance
-    m_robotContainer.getSuperstructure().updateAimPointForAlliance();
+    // Update aim point based on current alliance (only if mechanisms exist)
+    if (m_robotContainer.getSuperstructure() != null) {
+      m_robotContainer.getSuperstructure().updateAimPointForAlliance();
+    }
     
     // Get the selected auto from the dashboard chooser
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
@@ -180,7 +184,7 @@ public class Robot extends LoggedRobot {
     // Schedule the autonomous command to run
     if (m_autonomousCommand != null) {
       System.out.println("[Auto] Running auto: " + m_autonomousCommand.getName());
-      m_autonomousCommand.schedule();
+      CommandScheduler.getInstance().schedule(m_autonomousCommand);
     } else {
       System.out.println("[Auto] No autonomous command selected!");
     }
@@ -199,8 +203,10 @@ public class Robot extends LoggedRobot {
   /** Called once when teleop mode starts */
   @Override
   public void teleopInit() {
-    // Update aim point based on current alliance
-    m_robotContainer.getSuperstructure().updateAimPointForAlliance();
+    // Update aim point based on current alliance (only if mechanisms exist)
+    if (m_robotContainer.getSuperstructure() != null) {
+      m_robotContainer.getSuperstructure().updateAimPointForAlliance();
+    }
     
     // Cancel autonomous command when teleop starts
     // This ensures driver has full control
@@ -249,19 +255,21 @@ public class Robot extends LoggedRobot {
     SmartDashboard.putNumber("Robot Omega (deg/s)", 0.0);
     
     // === GYRO DATA ===
-    SmartDashboard.putNumber("Gyro Angle (deg)", m_gyro.getAngle());
-    SmartDashboard.putNumber("Gyro Pitch (deg)", m_gyro.getPitch());
-    SmartDashboard.putNumber("Gyro Roll (deg)", m_gyro.getRoll());
+    SmartDashboard.putNumber("Gyro Angle (deg)", 0);
+    SmartDashboard.putNumber("Gyro Pitch (deg)", 0);
+    SmartDashboard.putNumber("Gyro Roll (deg)", 0);
     
     // === VISION STATUS ===
     SmartDashboard.putNumber("Vision Tags Seen", 0);
     SmartDashboard.putBoolean("Vision Connected", false);
     
-    // === MECHANISM STATUS ===
-    SmartDashboard.putNumber("Turret Angle (deg)", 0.0);
-    SmartDashboard.putNumber("Shooter RPM", 0.0);
-    SmartDashboard.putBoolean("Shooter Ready", false);
-    SmartDashboard.putBoolean("Auto-Aim Active", false);
+    // === MECHANISM STATUS (only when mechanisms are available) ===
+    if (m_robotContainer.getSuperstructure() != null) {
+      SmartDashboard.putNumber("Turret Angle (deg)", 0.0);
+      SmartDashboard.putNumber("Shooter RPM", 0.0);
+      SmartDashboard.putBoolean("Shooter Ready", false);
+      SmartDashboard.putBoolean("Auto-Aim Active", false);
+    }
     
     // === CONTROL BUTTONS ===
     SmartDashboard.putBoolean("Reset Pose", false);     // Button to reset odometry
@@ -292,23 +300,25 @@ public class Robot extends LoggedRobot {
     SmartDashboard.putNumber("Robot Omega (deg/s)", Math.toDegrees(chassisSpeeds.omegaRadiansPerSecond));
     
     // === GYRO DATA ===
-    SmartDashboard.putNumber("Gyro Angle (deg)", m_gyro.getAngle());
-    SmartDashboard.putNumber("Gyro Pitch (deg)", m_gyro.getPitch());
-    SmartDashboard.putNumber("Gyro Roll (deg)", m_gyro.getRoll());
+    SmartDashboard.putNumber("Gyro Angle (deg)", m_robotContainer.m_robotDrive.getHeading());
+    SmartDashboard.putNumber("Gyro Pitch (deg)", 0); // YAGSL manages gyro internally
+    SmartDashboard.putNumber("Gyro Roll (deg)", 0);
     
-    // === MECHANISM STATUS ===
+    // === MECHANISM STATUS (only when mechanisms are available) ===
     var superstructure = m_robotContainer.getSuperstructure();
-    SmartDashboard.putNumber("Turret Angle (deg)", 
-        superstructure.getTurretAngle().in(edu.wpi.first.units.Units.Degrees));
-    SmartDashboard.putNumber("Shooter RPM", 
-        superstructure.getShooterSpeed().in(edu.wpi.first.units.Units.RPM));
-    SmartDashboard.putBoolean("Shooter Ready", superstructure.isReadyToShoot());
-    
-    // === AIM POINT (for debugging) ===
-    var aimPoint = m_robotContainer.getAimPoint();
-    SmartDashboard.putNumber("Aim X (m)", aimPoint.getX());
-    SmartDashboard.putNumber("Aim Y (m)", aimPoint.getY());
-    SmartDashboard.putNumber("Aim Z (m)", aimPoint.getZ());
+    if (superstructure != null) {
+      SmartDashboard.putNumber("Turret Angle (deg)", 
+          superstructure.getTurretAngle().in(edu.wpi.first.units.Units.Degrees));
+      SmartDashboard.putNumber("Shooter RPM", 
+          superstructure.getShooterSpeed().in(edu.wpi.first.units.Units.RPM));
+      SmartDashboard.putBoolean("Shooter Ready", superstructure.isReadyToShoot());
+      
+      // === AIM POINT (for debugging) ===
+      var aimPoint = m_robotContainer.getAimPoint();
+      SmartDashboard.putNumber("Aim X (m)", aimPoint.getX());
+      SmartDashboard.putNumber("Aim Y (m)", aimPoint.getY());
+      SmartDashboard.putNumber("Aim Z (m)", aimPoint.getZ());
+    }
 
     // === HANDLE DASHBOARD BUTTONS ===
     // Reset Pose button
