@@ -4,21 +4,42 @@
 
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Inches;
 import static frc.robot.subsystems.vision.VisionConstants.*;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ControllerConstants;
+import frc.robot.commands.ShootOnTheMoveCommand;
 import frc.robot.controls.DriverControls;
 import frc.robot.controls.OperatorControls;
+import frc.robot.controls.PoseControls;
 import frc.robot.subsystems.drive.SwerveSubsystem;
+import frc.robot.subsystems.mechanisms.HoodSubsystem;
+import frc.robot.subsystems.mechanisms.HopperSubsystem;
+import frc.robot.subsystems.mechanisms.IntakeSubsystem;
+import frc.robot.subsystems.mechanisms.KickerSubsystem;
+import frc.robot.subsystems.mechanisms.ShooterSubsystem;
+import frc.robot.subsystems.mechanisms.Superstructure;
+import frc.robot.subsystems.mechanisms.TurretSubsystem;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
+import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 
 /**
  * RobotContainer is where we define all subsystems, commands, and button bindings.
@@ -46,6 +67,36 @@ public class RobotContainer {
         /** YAGSL-based swerve drive subsystem - handles all driving and odometry */
         public final SwerveSubsystem m_robotDrive = new SwerveSubsystem();
         
+        // ==================== MECHANISM SUBSYSTEMS ====================
+        // Game-specific mechanisms for 2026 "Rebuilt" game.
+        // Only created when mechanisms are physically connected (kChassisOnly = false).
+        // When running chassis-only, these are null and mechanism commands are disabled.
+        
+        /** Dual flywheel shooter for launching FUEL */
+        private final ShooterSubsystem m_shooter;
+        
+        /** Turret for aiming shooter ±90° */
+        private final TurretSubsystem m_turret;
+        
+        /** Hood for adjusting shot trajectory */
+        private final HoodSubsystem m_hood;
+        
+        /** Ground intake with pivot arm */
+        private final IntakeSubsystem m_intake;
+        
+        /** Ball storage and queuing */
+        private final HopperSubsystem m_hopper;
+        
+        /** Final feed stage to shooter */
+        private final KickerSubsystem m_kicker;
+        
+        /** 
+         * Superstructure coordinates all mechanisms for unified control.
+         * Provides combined commands for shooting, feeding, and aiming.
+         * Null when running in chassis-only mode.
+         */
+        private final Superstructure m_superstructure;
+        
         /**
          * Vision subsystem for AprilTag pose estimation.
          * Runs automatically via CommandScheduler.periodic() - no explicit calls needed.
@@ -53,6 +104,10 @@ public class RobotContainer {
          */
         @SuppressWarnings("unused") // Field appears unused but runs via CommandScheduler
         private final Vision m_vision;
+        
+        // ==================== ZONE DETECTION ====================
+        /** Current alliance for change detection */
+        private Alliance currentAlliance = Alliance.Red;
         
         // ==================== AUTO CHOOSER ====================
         /** Dropdown in SmartDashboard/Shuffleboard to select autonomous routine */
@@ -63,6 +118,33 @@ public class RobotContainer {
          * Sets up all subsystems, commands, and button bindings.
          */
         public RobotContainer() {
+                // ==================== MECHANISM SUBSYSTEM INITIALIZATION ====================
+                // Only create mechanism subsystems when they are physically connected.
+                // In chassis-only mode (kChassisOnly = true), skip initialization to avoid
+                // CAN bus timeouts on missing SparkMax controllers (IDs 15-23).
+                // Each missing SparkMax causes ~30s of blocking timeout = 5+ minute startup!
+                if (!Constants.kChassisOnly) {
+                        m_shooter = new ShooterSubsystem();
+                        m_turret = new TurretSubsystem();
+                        m_hood = new HoodSubsystem();
+                        m_intake = new IntakeSubsystem();
+                        m_hopper = new HopperSubsystem();
+                        m_kicker = new KickerSubsystem();
+                        m_superstructure = new Superstructure(
+                                m_shooter, m_turret, m_hood, m_intake, m_hopper, m_kicker);
+                } else {
+                        System.out.println("*** CHASSIS-ONLY MODE ***");
+                        System.out.println("*** Mechanism subsystems DISABLED to avoid CAN timeouts ***");
+                        System.out.println("*** Set Constants.kChassisOnly = false when mechanisms are wired ***");
+                        m_shooter = null;
+                        m_turret = null;
+                        m_hood = null;
+                        m_intake = null;
+                        m_hopper = null;
+                        m_kicker = null;
+                        m_superstructure = null;
+                }
+
                 // ==================== VISION SETUP ====================
                 // Vision uses the IO pattern for AdvantageKit logging and replay support.
                 // Different IO implementations are used based on robot mode:
@@ -75,26 +157,23 @@ public class RobotContainer {
                 //   new VisionIOPhotonVision(camera1Name, robotToCamera1)
                 switch (Constants.currentMode) {
                         case REAL:
-                                // Real robot - Rubik Pi 3 camera on front
-                                // The method reference m_robotDrive::addVisionMeasurement connects
-                                // vision pose estimates to the drive's pose estimator
                                 m_vision = new Vision(
                                         m_robotDrive::addVisionMeasurement,
                                         new VisionIOPhotonVision(camera0Name, robotToCamera0),
-                                        new VisionIO() {});  // Second camera disabled - add later if needed
+                                        new VisionIO() {});
                                 break;
 
                         case SIM:
-                                // Simulation - use empty IO implementations
-                                // TODO: Add VisionIOPhotonVisionSim for full simulation support
                                 m_vision = new Vision(
                                         m_robotDrive::addVisionMeasurement,
-                                        new VisionIO() {},
+                                        new VisionIOPhotonVisionSim(
+                                                camera0Name, 
+                                                robotToCamera0,
+                                                m_robotDrive::getPose),
                                         new VisionIO() {});
                                 break;
 
                         default:
-                                // Replay mode - empty IO, data comes from log file
                                 m_vision = new Vision(
                                         m_robotDrive::addVisionMeasurement,
                                         new VisionIO() {},
@@ -104,20 +183,93 @@ public class RobotContainer {
 
                 // ==================== PATHPLANNER NAMED COMMANDS ====================
                 // Named commands can be triggered from PathPlanner autonomous paths.
-                // In PathPlanner, add an "Event Marker" and use these names.
                 NamedCommands.registerCommand("setX", m_robotDrive.setXCommand());
                 NamedCommands.registerCommand("zeroHeading", m_robotDrive.zeroHeadingCommand());
                 
+                // Register mechanism commands only when mechanisms are available
+                if (m_superstructure != null) {
+                        NamedCommands.registerCommand("shoot", m_superstructure.shootCommand());
+                        NamedCommands.registerCommand("intake", m_superstructure.setIntakeDeployAndRoll());
+                        NamedCommands.registerCommand("feedAll", m_superstructure.feedAllCommand());
+                        NamedCommands.registerCommand("stopShooting", m_superstructure.stopShootingCommand());
+                        NamedCommands.registerCommand("stopAll", m_superstructure.stopAllCommand());
+                        NamedCommands.registerCommand("eject", m_superstructure.ejectCommand());
+                        
+                        NamedCommands.registerCommand("enableAutoAim", 
+                                new ShootOnTheMoveCommand(m_robotDrive, m_superstructure, 
+                                        () -> m_superstructure.getAimPoint()));
+                        NamedCommands.registerCommand("disableAutoAim", 
+                                Commands.runOnce(() -> {}).withName("AutoAim.disable"));
+                        
+                        if (Robot.isSimulation()) {
+                                NamedCommands.registerCommand("fireFuel", 
+                                        DriverControls.fireFuel(m_robotDrive, m_superstructure));
+                                NamedCommands.registerCommand("fireFuelRepeating",
+                                        Commands.repeatingSequence(
+                                                DriverControls.fireFuel(m_robotDrive, m_superstructure),
+                                                Commands.waitSeconds(0.1))
+                                        .withName("AutoFire.repeating"));
+                        } else {
+                                NamedCommands.registerCommand("fireFuel", 
+                                        m_superstructure.feedAllCommand().withTimeout(0.5));
+                                NamedCommands.registerCommand("fireFuelRepeating",
+                                        m_superstructure.feedAllCommand());
+                        }
+                }
+                
                 // ==================== CONTROLLER BINDINGS ====================
-                // Controller bindings are configured in separate classes for organization.
-                // This keeps RobotContainer clean and makes bindings easier to find/modify.
-                DriverControls.configure(ControllerConstants.kDriverControllerPort, m_robotDrive);
-                OperatorControls.configure(ControllerConstants.kOperatorControllerPort);
+                DriverControls.configure(
+                        ControllerConstants.kDriverControllerPort, 
+                        m_robotDrive,
+                        m_superstructure);  // null-safe: sim features disabled when chassis-only
+                
+                // Only configure operator controls when mechanisms exist
+                if (m_superstructure != null) {
+                        OperatorControls.configure(
+                                ControllerConstants.kOperatorControllerPort, 
+                                m_robotDrive, 
+                                m_superstructure);
+                }
+                
+                PoseControls.configure(
+                        ControllerConstants.kPoseControllerPort,
+                        m_robotDrive);
+                
+                // ==================== ZONE-BASED AUTO-AIM ====================
+                // Only set up zone detection when mechanisms exist
+                if (m_superstructure != null) {
+                        // Initialize alliance and set up triggers for automatic aim point switching
+                        onAllianceChanged(getAlliance());
+                        
+                        new Trigger(() -> getAlliance() != currentAlliance)
+                                .onTrue(Commands.runOnce(() -> onAllianceChanged(getAlliance()))
+                                        .ignoringDisable(true));
+                        
+                        new Trigger(() -> isInAllianceZone())
+                                .onChange(Commands.runOnce(() -> onZoneChanged())
+                                        .ignoringDisable(true));
+                        
+                        new Trigger(() -> isOnAllianceOutpostSide())
+                                .onChange(Commands.runOnce(() -> onZoneChanged())
+                                        .ignoringDisable(true));
+                }
+                
+                // Silence joystick warnings in simulation
+                if (!Robot.isReal()) {
+                        DriverStation.silenceJoystickConnectionWarning(true);
+                }
                 
                 // ==================== AUTO CHOOSER ====================
                 // AutoBuilder.buildAutoChooser() automatically finds all .auto files
                 // in src/main/deploy/pathplanner/autos/ and creates a dropdown
-                autoChooser = AutoBuilder.buildAutoChooser("None");
+                autoChooser = AutoBuilder.buildAutoChooser();
+                
+                // Add a "Do Nothing" default option
+                autoChooser.setDefaultOption("Do Nothing", Commands.none().withName("Do Nothing"));
+                
+                // Add any custom autos here
+                // autoChooser.addOption("Drive Forward", m_robotDrive.driveForward().withTimeout(5));
+                
                 SmartDashboard.putData("Auto Chooser", autoChooser);
         }
 
@@ -127,5 +279,211 @@ public class RobotContainer {
          */
         public Command getAutonomousCommand() {
                 return autoChooser.getSelected();
+        }
+        
+        // ==================== GETTERS FOR LOGGING ====================
+        
+        /**
+         * Gets the robot's current pose.
+         * @return Pose2d of the robot
+         */
+        public Pose2d getRobotPose() {
+                return m_robotDrive.getPose();
+        }
+        
+        /**
+         * Gets the robot's current 3D pose.
+         * @return Pose3d of the robot
+         */
+        public Pose3d getRobotPose3d() {
+                return m_robotDrive.getPose3d();
+        }
+        
+        /**
+         * Gets the aim direction - the shooter pose in field coordinates.
+         * Returns robot pose when in chassis-only mode.
+         * 
+         * @return Pose3d representing where the shooter is pointing in field space
+         */
+        public Pose3d getAimDirection() {
+                if (m_superstructure == null) {
+                        return m_robotDrive.getPose3d();
+                }
+                Pose3d shooterPose = m_superstructure.getShooterPose();
+                return m_robotDrive.getPose3d().plus(
+                        new Transform3d(shooterPose.getTranslation(), shooterPose.getRotation()));
+        }
+        
+        /**
+         * Gets the current aim point (target location).
+         * Returns origin when in chassis-only mode.
+         * @return Translation3d of the target
+         */
+        public Translation3d getAimPoint() {
+                if (m_superstructure == null) {
+                        return new Translation3d();
+                }
+                return m_superstructure.getAimPoint();
+        }
+        
+        /**
+         * Sets the aim point for the superstructure.
+         * No-op in chassis-only mode.
+         * @param aimPoint The target location
+         */
+        public void setAimPoint(Translation3d aimPoint) {
+                if (m_superstructure != null) {
+                        m_superstructure.setAimPoint(aimPoint);
+                }
+        }
+        
+        /**
+         * Gets the superstructure subsystem.
+         * @return The Superstructure, or null in chassis-only mode
+         */
+        public Superstructure getSuperstructure() {
+                return m_superstructure;
+        }
+        
+        /**
+         * Resets the robot pose to the alliance-specific starting position.
+         * Only works in simulation - does nothing on real robot.
+         * Call this in teleopInit when NOT coming from auto.
+         */
+        public void resetSimPoseForAlliance() {
+                if (!Robot.isReal()) {
+                        Pose2d startPose = getStartingPoseForAlliance();
+                        m_robotDrive.resetOdometry(startPose);
+                        System.out.println("[Sim] Reset pose for teleop: " + startPose);
+                }
+        }
+        
+        /**
+         * Gets the default starting pose based on current alliance.
+         * @return Pose2d for the starting position
+         */
+        public Pose2d getStartingPoseForAlliance() {
+                Alliance alliance = getAlliance();
+                return (alliance == Alliance.Blue)
+                        ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side
+                        : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side
+        }
+        
+        // ==================== ZONE DETECTION ====================
+        
+        /**
+         * Gets the current alliance.
+         * @return Current alliance, defaults to Red if not connected to FMS
+         */
+        private Alliance getAlliance() {
+                return DriverStation.getAlliance().orElse(Alliance.Red);
+        }
+        
+        /**
+         * Checks if the robot is in its alliance zone (near its own driver station).
+         * 
+         * <p>Alliance zones:
+         * <ul>
+         *   <li>Blue: X less than 182 inches (near blue driver station at X=0)</li>
+         *   <li>Red: X greater than 469 inches (near red driver station at X=16.5m)</li>
+         * </ul>
+         * 
+         * @return true if robot is in its alliance zone
+         */
+        private boolean isInAllianceZone() {
+                Alliance alliance = getAlliance();
+                Distance blueZone = Inches.of(182);
+                Distance redZone = Inches.of(469);
+                
+                if (alliance == Alliance.Blue && m_robotDrive.getPose().getMeasureX().lt(blueZone)) {
+                        return true;
+                } else if (alliance == Alliance.Red && m_robotDrive.getPose().getMeasureX().gt(redZone)) {
+                        return true;
+                }
+                
+                return false;
+        }
+        
+        /**
+         * Checks if the robot is on the alliance's outpost side of the field.
+         * 
+         * <p>The field is divided in half along the Y axis:
+         * <ul>
+         *   <li>Blue outpost side: Y less than midline (158.84 inches)</li>
+         *   <li>Red outpost side: Y greater than midline</li>
+         * </ul>
+         * 
+         * @return true if robot is on the outpost side for its alliance
+         */
+        private boolean isOnAllianceOutpostSide() {
+                Alliance alliance = getAlliance();
+                Distance midLine = Inches.of(158.84375);
+                
+                if (alliance == Alliance.Blue && m_robotDrive.getPose().getMeasureY().lt(midLine)) {
+                        return true;
+                } else if (alliance == Alliance.Red && m_robotDrive.getPose().getMeasureY().gt(midLine)) {
+                        return true;
+                }
+                
+                return false;
+        }
+        
+        /**
+         * Called when the robot crosses a zone boundary.
+         * Updates the aim point based on current field position.
+         * 
+         * <p>Logic:
+         * <ul>
+         *   <li>In alliance zone → aim at alliance hub</li>
+         *   <li>Not in zone, on outpost side → aim at outpost</li>
+         *   <li>Not in zone, on far side → aim at far side target</li>
+         * </ul>
+         */
+        private void onZoneChanged() {
+                if (m_superstructure == null) return;
+                
+                if (isInAllianceZone()) {
+                        m_superstructure.setAimPoint(Constants.AimPoints.getAllianceHubPosition());
+                } else {
+                        if (isOnAllianceOutpostSide()) {
+                                m_superstructure.setAimPoint(Constants.AimPoints.getAllianceOutpostPosition());
+                        } else {
+                                m_superstructure.setAimPoint(Constants.AimPoints.getAllianceFarSidePosition());
+                        }
+                }
+        }
+        
+        /**
+         * Called when alliance color changes (e.g., when connected to FMS).
+         * Updates the current alliance and resets aim point to hub.
+         * In simulation, also resets the robot pose to the correct side of the field
+         * (but only when disabled, not during auto/teleop).
+         * 
+         * @param alliance The new alliance color
+         */
+        private void onAllianceChanged(Alliance alliance) {
+                System.out.println("[Alliance] Change detected: " + currentAlliance + " -> " + alliance);
+                currentAlliance = alliance;
+                
+                // Update aim point based on alliance (only if mechanisms exist)
+                if (m_superstructure != null) {
+                        if (alliance == Alliance.Blue) {
+                                m_superstructure.setAimPoint(Constants.AimPoints.BLUE_HUB.value);
+                        } else {
+                                m_superstructure.setAimPoint(Constants.AimPoints.RED_HUB.value);
+                        }
+                }
+                
+                // In simulation, reset pose to the correct alliance side
+                // Only reset when disabled - PathPlanner's resetOdom handles auto starting position
+                if (!Robot.isReal() && DriverStation.isDisabled()) {
+                        Pose2d newPose = (alliance == Alliance.Blue)
+                                ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side
+                                : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side
+                        m_robotDrive.resetOdometry(newPose);
+                        System.out.println("[Alliance] Reset pose to: " + newPose);
+                } else if (!Robot.isReal()) {
+                        System.out.println("[Alliance] Skipping pose reset (robot enabled or auto running)");
+                }
         }
 }

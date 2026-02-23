@@ -6,6 +6,8 @@ package frc.robot.subsystems.drive;
 
 import java.io.File;
 
+import org.littletonrobotics.junction.Logger;
+
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
@@ -13,7 +15,9 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
@@ -22,8 +26,10 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DriveConstants;
 import swervelib.SwerveInputStream;
 import swervelib.SwerveDrive;
@@ -78,19 +84,46 @@ public class SwerveSubsystem extends SubsystemBase {
     // YAGSL reads JSON config files from the deploy/swerve directory
     File swerveJsonDirectory = new File(Filesystem.getDeployDirectory(), "swerve");
     
+    // Starting pose for simulation - depends on alliance color
+    // Blue alliance: Left side of field (X ~2.75m), facing right (0°)
+    // Red alliance: Right side of field (X ~14.25m), facing left (180°)
+    // Note: In sim, DriverStation.getAlliance() may not be set yet at construction time,
+    // so we default to blue. The pose will be corrected when alliance is set.
+    boolean isBlueAlliance = DriverStation.getAlliance()
+        .map(alliance -> alliance == DriverStation.Alliance.Blue)
+        .orElse(true); // Default to blue if not set
+    
+    Pose2d simulationStartPose = isBlueAlliance 
+        ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side, facing right
+        : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side, facing left
+    
     try {
-      // Parse JSON files and create SwerveDrive object
-      swerveDrive = new SwerveParser(swerveJsonDirectory).createSwerveDrive(maximumSpeed);
+      // Parse JSON files and create SwerveDrive object with starting pose
+      swerveDrive = new SwerveParser(swerveJsonDirectory).createSwerveDrive(maximumSpeed, simulationStartPose);
     } catch (Exception e) {
       throw new RuntimeException("Failed to create SwerveDrive from JSON config", e);
     }
     
     // ==================== YAGSL CONFIGURATION ====================
-    // Enable heading correction - helps maintain heading while driving
-    swerveDrive.setHeadingCorrection(true);
+    // Heading correction should only be used while controlling the robot via angle (not angular velocity)
+    // When enabled, it can cause unwanted rotation when driving translationally
+    swerveDrive.setHeadingCorrection(false);
     
-    // Enable cosine compensation - improves accuracy at high angles
-    swerveDrive.setCosineCompensator(true);
+    // Correct for skew that gets worse as angular velocity increases
+    // This compensates for the robot drifting while rotating at speed
+    // DISABLED in simulation - causes pose glitching/jumping in sim
+    if (!RobotBase.isSimulation()) {
+      swerveDrive.setAngularVelocityCompensation(true, true, 0.1);
+    }
+    
+    // Cosine compensation improves accuracy at high angles, but causes discrepancies in simulation
+    swerveDrive.setCosineCompensator(!RobotBase.isSimulation());
+    
+    // Periodically re-synchronize absolute encoders with motor encoders when modules
+    // are not moving. This corrects any drift in the integrated encoder over time.
+    // The "3" is the number of degrees of tolerance before a sync is triggered.
+    // (From CA26 — one of the key advantages of YAGSL over MAXSwerve template)
+    swerveDrive.setModuleEncoderAutoSynchronize(true, 3);
     
     // ==================== PATHPLANNER CONFIGURATION ====================
     try {
@@ -108,10 +141,10 @@ public class SwerveSubsystem extends SubsystemBase {
         // Drive with speeds (robot-relative)
         (speeds, feedforwards) -> driveRobotRelative(speeds),
         
-        // Holonomic path controller
+        // Holonomic path controller — PID values from AutoConstants
         new PPHolonomicDriveController(
-            new PIDConstants(5.0, 0.0, 0.0), // Translation PID
-            new PIDConstants(5.0, 0.0, 0.0)  // Rotation PID
+            new PIDConstants(AutoConstants.kPTranslation, 0.0, 0.0), // Translation PID
+            new PIDConstants(AutoConstants.kPRotation, 0.0, 0.0)     // Rotation PID
         ),
         config,
         
@@ -135,6 +168,21 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Pose2d getPose() {
     return swerveDrive.getPose();
+  }
+  
+  /**
+   * Gets the current robot pose as a 3D pose.
+   * Z is always 0 (ground level), pitch and roll are always 0.
+   * @return The robot's pose in 3D space
+   */
+  public Pose3d getPose3d() {
+    Pose2d pose2d = getPose();
+    return new Pose3d(
+        pose2d.getX(),
+        pose2d.getY(),
+        0.0,  // On the ground
+        new Rotation3d(0, 0, pose2d.getRotation().getRadians())
+    );
   }
   
   /**
@@ -386,6 +434,22 @@ public class SwerveSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     // YAGSL handles odometry updates internally
-    // Additional periodic updates can be added here if needed
+    
+    // Log robot pose for AdvantageScope 3D visualization
+    Logger.recordOutput("Odometry/Robot", getPose());
+    Logger.recordOutput("Odometry/Robot3d", getPose3d());
+    
+    // Log module states for visualization
+    SwerveModuleState[] states = getModuleStates();
+    Logger.recordOutput("SwerveStates/Measured", states);
+    
+    // Log chassis speeds
+    ChassisSpeeds speeds = getRobotRelativeSpeeds();
+    Logger.recordOutput("SwerveStates/VelocityX", speeds.vxMetersPerSecond);
+    Logger.recordOutput("SwerveStates/VelocityY", speeds.vyMetersPerSecond);
+    Logger.recordOutput("SwerveStates/AngularVelocity", Math.toDegrees(speeds.omegaRadiansPerSecond));
+    
+    // Log heading
+    Logger.recordOutput("Odometry/Heading", getHeading());
   }
 }

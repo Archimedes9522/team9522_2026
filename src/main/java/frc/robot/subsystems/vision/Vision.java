@@ -232,6 +232,10 @@ public class Vision extends SubsystemBase {
       Logger.recordOutput(
           "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPosesRejected",
           robotPosesRejected.toArray(new Pose3d[robotPosesRejected.size()]));
+      // Log which tag IDs this camera is seeing
+      Logger.recordOutput(
+          "Vision/Camera" + Integer.toString(cameraIndex) + "/VisibleTagIds",
+          inputs[cameraIndex].tagIds);
       
       // Add to combined lists
       allTagPoses.addAll(tagPoses);
