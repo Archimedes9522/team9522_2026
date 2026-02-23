@@ -223,10 +223,12 @@ public class DriverControls {
       // Log the actual velocity for debugging
       Logger.recordOutput("Shooter/ActualTangentialVelocity", shooterVelocity.in(MetersPerSecond));
       
-      // Minimum velocity to create any shot (prevents zero-velocity projectiles)
-      LinearVelocity minVelocity = MetersPerSecond.of(5.0);
-      if (shooterVelocity.lt(minVelocity)) {
-        shooterVelocity = minVelocity;
+      // Clamp to minimum BEFORE applying the 0.5x spin scaling.
+      // Without this, a shot clamped to 5 m/s would still spawn at 2.5 m/s after scaling.
+      // Minimum of 10 m/s pre-scale ensures projectile is always >= 5 m/s post-scale.
+      LinearVelocity minVelocityPreScale = MetersPerSecond.of(10.0);
+      if (shooterVelocity.lt(minVelocityPreScale)) {
+        shooterVelocity = minVelocityPreScale;
         Logger.recordOutput("Shooter/UsingMinimumVelocity", true);
       } else {
         Logger.recordOutput("Shooter/UsingMinimumVelocity", false);
@@ -241,7 +243,7 @@ public class DriverControls {
           drivetrain.getSwerveDrive().getRobotVelocity(),
           drivetrain.getPose().getRotation().rotateBy(superstructure.getAimRotation3d().toRotation2d()),
           TurretSubsystem.TURRET_TRANSLATION.getMeasureZ(),
-          // 0.5 times because we're applying spin to the fuel as we shoot it
+          // 0.5x scaling because spin is applied to the fuel as it's shot
           shooterVelocity.times(0.5),
           superstructure.getHoodAngle());
 

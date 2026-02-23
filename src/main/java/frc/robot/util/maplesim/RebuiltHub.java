@@ -53,7 +53,7 @@ public class RebuiltHub extends Goal {
   };
 
   /** Radius of the goal opening */
-  public static final double GoalRadius = 0.5969;
+  public static final double GOAL_RADIUS = 0.5969;
   
   /** Random number generator for ejection pose selection */
   static final Random rng = new Random();
@@ -64,8 +64,8 @@ public class RebuiltHub extends Goal {
       .map((Pose3d toRotate) -> toRotate.rotateBy(new Rotation3d(Rotation2d.fromDegrees(180))))
       .toArray(Pose3d[]::new);
 
-  /** NetworkTables publisher for hub pose visualization */
-  StructPublisher<Pose3d> posePublisher;
+  /** NetworkTables publisher for hub pose visualization — stored to allow future pose updates */
+  protected final StructPublisher<Pose3d> posePublisher;
   
   /** Reference to the parent arena */
   protected final Arena2026Rebuilt arena;
@@ -89,11 +89,11 @@ public class RebuiltHub extends Goal {
 
     this.arena = arena;
     
-    // Publish hub pose for AdvantageScope visualization
-    StructPublisher<Pose3d> HubPosePublisher = NetworkTableInstance.getDefault()
+    // Publish hub pose for AdvantageScope visualization — stored in field for future updates
+    posePublisher = NetworkTableInstance.getDefault()
         .getStructTopic("/SmartDashboard/MapleSim/Goals/" + (isBlue ? "BlueHub" : "RedHub"), Pose3d.struct)
         .publish();
-    HubPosePublisher.set(new Pose3d(position, new Rotation3d()));
+    posePublisher.set(new Pose3d(position, new Rotation3d()));
   }
 
   @Override
@@ -101,7 +101,7 @@ public class RebuiltHub extends Goal {
     // Check if game piece is within sphere radius of hub center
     return Math.pow(gamePiece.getPose3d().getX() - position.getX(), 2)
         + Math.pow(gamePiece.getPose3d().getY() - position.getY(), 2)
-        + Math.pow(gamePiece.getPose3d().getZ() - position.getZ(), 2) < Math.pow(GoalRadius, 2);
+        + Math.pow(gamePiece.getPose3d().getZ() - position.getZ(), 2) < Math.pow(GOAL_RADIUS, 2);
   }
 
   @Override
