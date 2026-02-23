@@ -48,8 +48,14 @@ public class RebuiltOutpost extends Goal {
   protected static final Translation3d redRenderPose = new Translation3d(16.640988, 7.7, 0.844502);
   protected static final Translation3d blueRenderPose = new Translation3d(-0.12, 0.325, 0.844502);
 
-  /** NetworkTables publisher for outpost pose */
-  StructPublisher<Pose3d> posePublisher;
+  /** NetworkTables publisher for main outpost pose — stored to allow future pose updates */
+  protected final StructPublisher<Pose3d> outpostPosePublisher;
+
+  /** NetworkTables publisher for the throw/launch position — stored for future updates */
+  protected final StructPublisher<Pose3d> outpostThrowPublisher;
+
+  /** NetworkTables publisher for the dump position — stored for future updates */
+  protected final StructPublisher<Pose3d> outpostDumpPublisher;
 
   /** Reference to the parent arena */
   protected Arena2026Rebuilt arena;
@@ -74,27 +80,27 @@ public class RebuiltOutpost extends Goal {
     this.arena = arena;
     gamePieceCount = 24;  // Start with 24 FUEL
 
-    // Publish poses for AdvantageScope visualization
-    StructPublisher<Pose3d> OutpostPublisher = NetworkTableInstance.getDefault()
+    // Publish poses for AdvantageScope visualization — stored in fields for future updates
+    outpostPosePublisher = NetworkTableInstance.getDefault()
         .getStructTopic(
             "/SmartDashboard/MapleSim/Goals/" + (isBlue ? "BlueOutpost" : "RedOutpost"), Pose3d.struct)
         .publish();
 
-    StructPublisher<Pose3d> OutpostThrowPublisher = NetworkTableInstance.getDefault()
+    outpostThrowPublisher = NetworkTableInstance.getDefault()
         .getStructTopic(
             "/SmartDashboard/MapleSim/Goals/" + (isBlue ? "BlueOutpostThrow" : "RedOutpostThrow"),
             Pose3d.struct)
         .publish();
         
-    StructPublisher<Pose3d> OutpostDumpPublisher = NetworkTableInstance.getDefault()
+    outpostDumpPublisher = NetworkTableInstance.getDefault()
         .getStructTopic(
             "/SmartDashboard/MapleSim/Goals/" + (isBlue ? "BlueOutpostDump" : "RedOutpostDump"),
             Pose3d.struct)
         .publish();
 
-    OutpostPublisher.set(new Pose3d(position, new Rotation3d()));
-    OutpostDumpPublisher.set(new Pose3d(isBlue ? blueDumpPose : redDumpPose, new Rotation3d()));
-    OutpostThrowPublisher.set(new Pose3d(isBlue ? blueLaunchPose : redLaunchPose, new Rotation3d()));
+    outpostPosePublisher.set(new Pose3d(position, new Rotation3d()));
+    outpostDumpPublisher.set(new Pose3d(isBlue ? blueDumpPose : redDumpPose, new Rotation3d()));
+    outpostThrowPublisher.set(new Pose3d(isBlue ? blueLaunchPose : redLaunchPose, new Rotation3d()));
   }
 
   @Override
