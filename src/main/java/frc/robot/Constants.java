@@ -5,9 +5,7 @@
 package frc.robot;
 
 import com.pathplanner.lib.config.RobotConfig;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -27,8 +25,8 @@ import edu.wpi.first.wpilibj.DriverStation;
  * 
  * <p>Tip: Use static imports to reduce verbosity:
  * <pre>
- *   import static frc.robot.Constants.DriveConstants.*;
- *   // Now you can use kMaxSpeedMetersPerSecond directly
+ *   import static frc.robot.Constants.AutoConstants.*;
+ *   // Now you can use kPTranslation directly
  * </pre>
  */
 public final class Constants {
@@ -87,171 +85,6 @@ public final class Constants {
   }
 
   /**
-   * Constants for the swerve drive subsystem.
-   * 
-   * <p>The swerve drive is configured via YAGSL JSON files in {@code src/main/deploy/swerve/}.
-   * These Java constants should match the values in those JSON files for consistency.
-   * 
-   * <p>Cross-reference with YAGSL config:
-   * <ul>
-   *   <li>{@code kMaxSpeedMetersPerSecond} → passed to {@code SwerveParser.createSwerveDrive(maximumSpeed)}</li>
-   *   <li>{@code kTrackWidth}, {@code kWheelBase} → module {@code location} fields (inches from center)</li>
-   *   <li>CAN IDs → module JSON {@code drive.id} and {@code angle.id} fields</li>
-   *   <li>Current limits → {@code physicalproperties.json} {@code currentLimit} (40A drive, 20A angle)</li>
-   *   <li>Gear ratios → {@code physicalproperties.json} {@code conversionFactors}</li>
-   * </ul>
-   * 
-   * <p><b>NOTE:</b> CAN IDs here may differ from YAGSL module JSONs — YAGSL JSON files
-   * are the source of truth for the actual hardware wiring. These constants are kept
-   * for reference and for any code that reads them directly.
-   */
-  public static final class DriveConstants {
-    // === SPEED LIMITS ===
-    // Note: These are the ALLOWED maximums, not the theoretical maximums
-    // Matches SwerveSubsystem.maximumSpeed = Units.feetToMeters(15.76) ≈ 4.8 m/s
-    
-    /** Maximum driving speed in meters per second */
-    public static final double kMaxSpeedMetersPerSecond = 4.8;
-    
-    /** Maximum rotation speed in radians per second (2π = one full rotation per second) */
-    public static final double kMaxAngularSpeed = 2 * Math.PI;
-
-    // === CHASSIS DIMENSIONS ===
-    // These measurements are between wheel CENTERS, not frame edges
-    // Frame size is 27.5" (front-to-back) x 25.5" (side-to-side), with 3.5" inset to wheel centers
-    // Matches YAGSL module locations: front=±12", left=±11" (i.e. 24" x 22" between centers)
-    
-    /** Distance between left and right wheel centers (side to side) - frame is 25.5" wide */
-    public static final double kTrackWidth = Units.inchesToMeters(22);  // YAGSL: left=±11"
-    
-    /** Distance between front and back wheel centers (front to back) - frame is 27.5" long */
-    public static final double kWheelBase = Units.inchesToMeters(24);   // YAGSL: front=±12"
-    
-    /**
-     * Kinematics object that converts chassis speeds to individual module states.
-     * 
-     * <p>Module positions are specified as (X, Y) from robot center:
-     * - X positive = forward, X negative = backward
-     * - Y positive = left, Y negative = right
-     * 
-     * Order: Front Left, Front Right, Back Left, Back Right
-     */
-    public static final SwerveDriveKinematics kDriveKinematics = new SwerveDriveKinematics(
-        new Translation2d(kWheelBase / 2, kTrackWidth / 2),   // Front Left
-        new Translation2d(kWheelBase / 2, -kTrackWidth / 2),  // Front Right
-        new Translation2d(-kWheelBase / 2, kTrackWidth / 2),  // Back Left
-        new Translation2d(-kWheelBase / 2, -kTrackWidth / 2)); // Back Right
-
-    // === MODULE ANGULAR OFFSETS ===
-    // Each module's "zero" position relative to the chassis
-    // These compensate for how the modules are physically mounted
-    public static final double kFrontLeftChassisAngularOffset = -Math.PI / 2;   // -90 degrees
-    public static final double kFrontRightChassisAngularOffset = 0;              // 0 degrees
-    public static final double kBackLeftChassisAngularOffset = Math.PI;          // 180 degrees
-    public static final double kBackRightChassisAngularOffset = Math.PI / 2;     // 90 degrees
-
-    // === CAN BUS IDs ===
-    // Each module has two motors: driving (wheel speed) and turning (wheel angle)
-    // Make sure these match your actual wiring!
-    // Numbering: Front Right = 1,2, then counter-clockwise
-    
-    // Front Right Module
-    public static final int kFrontRightDrivingCanId = 1;
-    public static final int kFrontRightTurningCanId = 2;
-
-    // Front Left Module
-    public static final int kFrontLeftDrivingCanId = 3;
-    public static final int kFrontLeftTurningCanId = 4;
-
-    // Rear Left Module
-    public static final int kRearLeftDrivingCanId = 5;
-    public static final int kRearLeftTurningCanId = 6;
-
-    // Rear Right Module
-    public static final int kRearRightDrivingCanId = 7;
-    public static final int kRearRightTurningCanId = 8;
-
-    /** Set to true if gyro reports positive rotation when robot turns clockwise */
-    public static final boolean kGyroReversed = true;
-  }
-
-  /**
-   * Constants for individual swerve modules (MAXSwerve 13T configuration).
-   * 
-   * <p><b>NOTE:</b> These are NOT used by YAGSL — the swerve drive is configured
-   * entirely from JSON files in {@code src/main/deploy/swerve/}. These constants are
-   * kept here for reference and to verify that the YAGSL config matches expectations.
-   * 
-   * <p>Cross-reference with {@code physicalproperties.json}:
-   * <ul>
-   *   <li>Wheel diameter: 3" → {@code drive.diameter: 3}</li>
-   *   <li>Drive gear ratio: 5.50:1 (13T pinion) → {@code drive.gearRatio: 5.50}</li>
-   *   <li>Angle gear ratio: 46.42:1 → {@code angle.gearRatio: 46.42}</li>
-   *   <li>Drive current limit: 40A → {@code currentLimit.drive: 40}</li>
-   *   <li>Angle current limit: 20A → {@code currentLimit.angle: 20}</li>
-   * </ul>
-   * 
-   * @see <a href="https://docs.yagsl.com/configuring-yagsl/standard-conversion-factors">YAGSL Standard Conversion Factors - MAX Swerve 13T</a>
-   */
-  public static final class ModuleConstants {
-    /** Number of teeth on the driving motor's pinion gear (changes speed/torque ratio) */
-    public static final int kDrivingMotorPinionTeeth = 13;
-
-    // === CALCULATED VALUES ===
-    // These are derived from the physical constants above
-    
-    /** NEO motor free speed in rotations per second */
-    public static final double kDrivingMotorFreeSpeedRps = NeoMotorConstants.kFreeSpeedRpm / 60;
-    
-    /** Wheel diameter (3 inch colson wheel) */
-    public static final double kWheelDiameterMeters = 0.0762;
-    
-    /** Distance traveled in one wheel rotation */
-    public static final double kWheelCircumferenceMeters = kWheelDiameterMeters * Math.PI;
-    
-    /**
-     * Gear ratio from motor to wheel.
-     * MAXSwerve uses: 45 teeth bevel gear / 22 teeth first stage / 15 teeth bevel pinion
-     */
-    public static final double kDrivingMotorReduction = (45.0 * 22) / (kDrivingMotorPinionTeeth * 15);
-    
-    /** Theoretical maximum wheel speed (actual will be lower due to friction, battery sag, etc.) */
-    public static final double kDriveWheelFreeSpeedRps = (kDrivingMotorFreeSpeedRps * kWheelCircumferenceMeters)
-        / kDrivingMotorReduction;
-
-    // === ENCODER CONVERSION FACTORS ===
-    // These convert encoder units to real-world units
-    
-    /** Meters traveled per motor rotation */
-    public static final double kDrivingEncoderPositionFactor = (kWheelDiameterMeters * Math.PI)
-        / kDrivingMotorReduction;
-    
-    /** Meters per second from motor RPM */
-    public static final double kDrivingEncoderVelocityFactor = ((kWheelDiameterMeters * Math.PI)
-        / kDrivingMotorReduction) / 60.0;
-
-    /** Radians per motor rotation (full rotation = 2π) */
-    public static final double kTurningEncoderPositionFactor = (2 * Math.PI);
-    
-    /** Radians per second from motor RPM */
-    public static final double kTurningEncoderVelocityFactor = (2 * Math.PI) / 60.0;
-
-    /** PID wrapping minimum (0 radians) */
-    public static final double kTurningEncoderPositionPIDMinInput = 0;
-    
-    /** PID wrapping maximum (2π radians) */
-    public static final double kTurningEncoderPositionPIDMaxInput = kTurningEncoderPositionFactor;
-
-    /** Brake mode holds position when not powered */
-    public static final IdleMode kDrivingMotorIdleMode = IdleMode.kBrake;
-    public static final IdleMode kTurningMotorIdleMode = IdleMode.kBrake;
-
-    /** Current limits protect motors and battery */
-    public static final int kDrivingMotorCurrentLimit = 40; // amps
-    public static final int kTurningMotorCurrentLimit = 20; // amps
-  }
-
-  /**
    * Autonomous mode constants for trajectory following.
    * 
    * <p>These values should match what is configured in {@code SwerveSubsystem}'s
@@ -304,14 +137,6 @@ public final class Constants {
         e.printStackTrace();
       }
     }
-  }
-
-  /**
-   * NEO motor specifications.
-   */
-  public static final class NeoMotorConstants {
-    /** NEO brushless motor free speed (no load) in RPM */
-    public static final double kFreeSpeedRpm = 5676;
   }
 
   /**

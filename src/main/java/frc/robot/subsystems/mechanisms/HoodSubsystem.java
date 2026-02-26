@@ -8,6 +8,7 @@ import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
+import static edu.wpi.first.units.Units.KilogramSquareMeters;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
@@ -93,7 +94,7 @@ public class HoodSubsystem extends SubsystemBase {
             Degrees.of(HoodConstants.kMinAngleDegrees - 5),
             Degrees.of(HoodConstants.kMaxAngleDegrees + 5))
         .withStartingPosition(Degrees.of(HoodConstants.kStowedAngleDegrees))
-        .withMOI(0.001)  // Small moment of inertia
+        .withMOI(KilogramSquareMeters.of(0.001))  // Small moment of inertia
         .withTelemetry("Hood", TelemetryVerbosity.HIGH);
 
     hood = new Pivot(hoodConfig);

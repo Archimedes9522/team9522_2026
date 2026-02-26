@@ -1,17 +1,11 @@
 # TODO — FRC Team 9522 (2026)
 
-> **Last updated:** 2026-02-22  
-> **Branch:** `test`
+> **Last updated:** 2026-02-26  
+> **Branch:** `main`
 
 ---
 
 ## 🔴 Critical — Before First Match
-
-- [ ] **Verify pinion gear tooth count (12T vs 13T)**  
-  `Constants.java` says `kDrivingMotorPinionTeeth = 13` and `physicalproperties.json` now uses `gearRatio: 5.08` (13T).  
-  **Physically inspect** the MAXSwerve modules to confirm this is correct.  
-  If the robot uses **12T**, change `physicalproperties.json` drive `gearRatio` to `5.50` and update `ModuleConstants.kDrivingMotorPinionTeeth` to `12`.  
-  YAGSL standard factors: 12T=5.50, 13T=5.08, 14T=4.71
 
 - [ ] **Calibrate swerve module encoder offsets**  
   Current offsets (FL=90°, FR=180°, BL=0°, BR=-90°) are placeholder values.  
@@ -50,47 +44,51 @@
   - Hood PID (P=0.1) — placeholder
   - Intake pivot PID (P=0.1) — placeholder
 
-- [ ] **Verify `invertedIMU` setting**  
-  `swervedrive.json` has `invertedIMU: true`. CA26 uses `false`.  
-  If the robot spins the wrong way in teleop, toggle this.
+- [x] **Verify `invertedIMU` setting**  
+  `swervedrive.json` has `invertedIMU: true`. Confirmed correct — gyro is mounted  
+  facing backwards on the robot, so `invertedIMU: true` compensates for this.
 
 - [ ] **Verify motor inversions**  
   All module JSONs have `drive: false, angle: true`.  
   If a module drives backward or turns the wrong way, adjust the `inverted` fields.
 
-- [ ] **Set up PathPlanner GUI settings**  
-  Verify `deploy/pathplanner/settings.json` has correct robot dimensions, mass, and  
-  module positions matching the YAGSL config.
+- [x] **Set up PathPlanner GUI settings**  
+  Updated `deploy/pathplanner/settings.json` and YAGSL module JSONs with correct dimensions:  
+  - Robot: 28" long × 26" wide (0.7112m × 0.6604m)  
+  - Module positions: front=±12.25", left=±11.25" (wheelbase=24.5", trackwidth=22.5")  
+  - PathPlanner modules: FL=0.31115,0.28575 / FR=0.31115,-0.28575 / BL=-0.31115,0.28575 / BR=-0.31115,-0.28575  
+  - Robot mass: 54.43 kg (120 lbs), wheelCOF: 1.19, wheel radius: 0.0381m
 
 ---
 
 ## 🟢 Nice to Have — Improvements
 
-- [ ] **Add PathPlanner feedforward to AutoBuilder drive callback**  
-  CA26 uses `swerveDrive.drive(speeds, moduleStates, moduleFeedForwards.linearForces())`  
-  instead of just `swerveDrive.drive(speeds)`. This gives smoother autonomous paths.  
-  Requires testing to ensure it works with our hardware.
+- [x] **Add PathPlanner feedforward to AutoBuilder drive callback**  
+  AutoBuilder now passes `feedforwards.linearForces()` and module states to  
+  `swerveDrive.drive(speeds, moduleStates, forces)` for smoother autonomous paths.
 
-- [ ] **Evaluate heading correction for aim modes**  
-  `setHeadingCorrection(false)` is correct for normal driving but could be beneficial  
-  for auto-aim modes where the robot should maintain a specific heading.
+- [x] **Evaluate heading correction for aim modes**  
+  Added `setHeadingCorrection(boolean)` toggle to `SwerveSubsystem`.  
+  Disabled by default for normal driving. Can be enabled for aim modes where  
+  the robot should hold a specific heading while strafing.
 
-- [ ] **Remove unused old constants classes**  
-  `DriveConstants`, `ModuleConstants`, `AutoConstants`, `NeoMotorConstants` are not used by YAGSL.  
-  Once the team is fully comfortable with YAGSL config, these could be removed to  
-  reduce confusion. Currently kept as reference/cross-check.
+- [x] **Remove unused old constants classes**  
+  Removed `DriveConstants`, `ModuleConstants`, `NeoMotorConstants` from `Constants.java`.  
+  Migrated `kMaxAngularSpeed` usage to `swerveDrive.getMaximumChassisAngularVelocity()`.  
+  `AutoConstants` kept (actively used for PathPlanner PID and config).
 
-- [ ] **Add `wheelGripCoefficientOfFriction` tuning**  
-  Currently 1.19 (standard black rubber on carpet). If using different wheels, update  
-  `physicalproperties.json` and re-test autonomous accuracy.
+- [x] **Add `wheelGripCoefficientOfFriction` tuning**  
+  YAGSL `physicalproperties.json` has 1.19, PathPlanner `settings.json` now synced to 1.19.  
+  Standard value for black rubber on carpet. Only update if using different wheel material.
 
-- [ ] **Clean up YAMS `withMOI()` deprecation warnings**  
-  `TurretSubsystem.java` and `HoodSubsystem.java` use deprecated `withMOI()`.  
-  Check YAMS library for the replacement API when updating the dependency.
+- [x] **Clean up YAMS `withMOI()` deprecation warnings**  
+  Updated to `withMOI(KilogramSquareMeters.of(value))` in `TurretSubsystem.java`  
+  and `HoodSubsystem.java`. YAMS vendordep updated to 2026.2.23. Zero build warnings.
 
-- [ ] **Consider PathPlanner setpoint generator**  
-  CA26 imports `SwerveSetpointGenerator` for smoother path following.  
-  Could be added later for competition-level autonomous smoothness.
+- [x] **Consider PathPlanner setpoint generator**  
+  Added `SwerveSetpointGenerator` to `SwerveSubsystem` for smoother teleop driving.  
+  New methods: `driveWithSetpoints(ChassisSpeeds)` and `driveFieldOrientedWithSetpoints(SwerveInputStream)`.  
+  Generates kinematically feasible setpoints that prevent wheel scrub.
 
 ---
 
@@ -112,3 +110,11 @@
 - [x] Remove redundant `OIConstants` class
 - [x] Fix `Command.schedule()` deprecation warnings
 - [x] Add README.md
+- [x] Verify and correct CAN IDs in module JSONs (FR=1,2 / FL=3,4 / BL=5,6 / BR=7,8)
+- [x] Fix YAMS `withMOI()` deprecation — use `KilogramSquareMeters.of()` units API
+- [x] Add PathPlanner feedforward to AutoBuilder drive callback
+- [x] Add `setHeadingCorrection()` toggle for aim modes
+- [x] Add `SwerveSetpointGenerator` for smoother teleop driving
+- [x] Remove unused old constants classes (`DriveConstants`, `ModuleConstants`, `NeoMotorConstants`)
+- [x] Fix PathPlanner GUI settings (module positions, mass, trackwidth, wheel COF/radius)
+- [x] Update robot/module dimensions to actual measurements (28"×26" robot, 24.5"×22.5" module spacing)

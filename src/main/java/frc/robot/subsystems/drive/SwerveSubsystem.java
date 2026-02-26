@@ -12,6 +12,10 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+import com.pathplanner.lib.path.PathConstraints;
+import com.pathplanner.lib.util.DriveFeedforwards;
+import com.pathplanner.lib.util.swerve.SwerveSetpoint;
+import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -30,7 +34,6 @@ import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.DriveConstants;
 import swervelib.SwerveInputStream;
 import swervelib.SwerveDrive;
 import swervelib.parser.SwerveParser;
@@ -69,6 +72,16 @@ public class SwerveSubsystem extends SubsystemBase {
   
   /** PathPlanner robot configuration */
   private RobotConfig config;
+  
+  /**
+   * PathPlanner SwerveSetpointGenerator for smoother teleop driving.
+   * Generates kinematically feasible setpoints that prevent wheel scrub
+   * by smoothly transitioning between module states.
+   */
+  private SwerveSetpointGenerator setpointGenerator;
+  
+  /** Previous setpoint for the setpoint generator (carries state between cycles) */
+  private SwerveSetpoint previousSetpoint;
 
   /**
    * Creates a new SwerveSubsystem.
@@ -128,6 +141,19 @@ public class SwerveSubsystem extends SubsystemBase {
     // ==================== PATHPLANNER CONFIGURATION ====================
     try {
       config = RobotConfig.fromGUISettings();
+      
+      // SwerveSetpointGenerator smooths teleop driving by generating kinematically
+      // feasible setpoints. This prevents wheel scrub and reduces wear.
+      // Max steer velocity: NEO free speed (5676 RPM) / angle gear ratio (46.42:1)
+      // = 5676 / 60 / 46.42 * 2π ≈ 12.84 rad/s
+      double maxSteerVelocityRadPerSec = (5676.0 / 60.0 / 46.42) * 2.0 * Math.PI;
+      setpointGenerator = new SwerveSetpointGenerator(config, maxSteerVelocityRadPerSec);
+      
+      // Initialize previous setpoint to current state
+      previousSetpoint = new SwerveSetpoint(
+          getRobotRelativeSpeeds(),
+          swerveDrive.getStates(),
+          DriveFeedforwards.zeros(config.numModules));
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -138,8 +164,12 @@ public class SwerveSubsystem extends SubsystemBase {
         this::resetOdometry,     // Reset pose
         this::getRobotRelativeSpeeds, // Get robot-relative speeds
         
-        // Drive with speeds (robot-relative)
-        (speeds, feedforwards) -> driveRobotRelative(speeds),
+        // Drive with speeds and feedforwards for smoother autonomous paths
+        // PathPlanner provides module feedforwards (forces) that improve path tracking
+        (speeds, feedforwards) -> swerveDrive.drive(
+            speeds,
+            swerveDrive.kinematics.toSwerveModuleStates(speeds),
+            feedforwards.linearForces()),
         
         // Holonomic path controller — PID values from AutoConstants
         new PPHolonomicDriveController(
@@ -268,7 +298,7 @@ public class SwerveSubsystem extends SubsystemBase {
     // Convert normalized inputs to actual speeds
     double xSpeedMPS = xSpeed * maximumSpeed;
     double ySpeedMPS = ySpeed * maximumSpeed;
-    double rotRadPS = rot * DriveConstants.kMaxAngularSpeed;
+    double rotRadPS = rot * swerveDrive.getMaximumChassisAngularVelocity();
     
     // Create translation vector
     Translation2d translation = new Translation2d(xSpeedMPS, ySpeedMPS);
@@ -301,6 +331,52 @@ public class SwerveSubsystem extends SubsystemBase {
     }
   }
   
+  /**
+   * Drives using the SwerveSetpointGenerator for smoother module transitions.
+   * This generates kinematically feasible setpoints that prevent wheel scrub,
+   * producing smoother driving especially during direction changes.
+   * 
+   * <p>Uses PathPlanner's setpoint generator to limit module state changes
+   * to what is physically achievable, reducing wheel wear and improving control.
+   * 
+   * @param speeds Desired robot-relative chassis speeds
+   */
+  public void driveWithSetpoints(ChassisSpeeds speeds) {
+    if (setpointGenerator == null || previousSetpoint == null) {
+      // Fallback if setpoint generator wasn't initialized
+      swerveDrive.drive(speeds);
+      return;
+    }
+    
+    // Generate a feasible setpoint from the desired speeds
+    previousSetpoint = setpointGenerator.generateSetpoint(
+        previousSetpoint, speeds, 0.02); // 0.02s = 20ms loop period
+    
+    // Drive using the smoothed setpoint with feedforwards
+    swerveDrive.drive(
+        previousSetpoint.robotRelativeSpeeds(),
+        previousSetpoint.moduleStates(),
+        previousSetpoint.feedforwards().linearForces());
+  }
+  
+  // ==================== HEADING CORRECTION ====================
+  
+  /**
+   * Enables or disables heading correction.
+   * 
+   * <p>When enabled, the robot will actively maintain its current heading when
+   * driving translationally (no rotational input). This is useful for aim modes
+   * where the robot should hold a specific angle while strafing.
+   * 
+   * <p>When disabled (default), the robot only rotates when rotational input
+   * is given, which feels more natural for normal teleop driving.
+   * 
+   * @param enabled True to enable heading correction
+   */
+  public void setHeadingCorrection(boolean enabled) {
+    swerveDrive.setHeadingCorrection(enabled);
+  }
+  
   // ==================== COMMANDS ====================
   
   /**
@@ -313,6 +389,25 @@ public class SwerveSubsystem extends SubsystemBase {
   public Command driveFieldOriented(SwerveInputStream inputStream) {
     return run(() -> swerveDrive.driveFieldOriented(inputStream.get()))
         .withName("SwerveSubsystem.driveFieldOriented");
+  }
+  
+  /**
+   * Creates a command that drives field-oriented using the SwerveSetpointGenerator.
+   * This produces smoother module transitions than raw driving, reducing wheel scrub.
+   * 
+   * <p>Recommended for competition driving — smoother than {@link #driveFieldOriented}.
+   * 
+   * @param inputStream The SwerveInputStream providing joystick inputs
+   * @return A command that drives with setpoint generation
+   */
+  public Command driveFieldOrientedWithSetpoints(SwerveInputStream inputStream) {
+    return run(() -> {
+      ChassisSpeeds fieldSpeeds = inputStream.get();
+      // Convert field-oriented to robot-relative for the setpoint generator
+      ChassisSpeeds robotSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+          fieldSpeeds, getRotation());
+      driveWithSetpoints(robotSpeeds);
+    }).withName("SwerveSubsystem.driveFieldOrientedWithSetpoints");
   }
   
   /**
