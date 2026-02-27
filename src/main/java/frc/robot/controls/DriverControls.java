@@ -92,11 +92,11 @@ public class DriverControls {
     // - Alliance-relative: Automatically flips for red alliance
     driveInputStream = SwerveInputStream.of(
             drivetrain.getSwerveDrive(),
-            // Left stick Y = forward/back (negated - up is negative on controller)
+            // Left stick Y = forward/back (negated - pushing up gives negative value)
             () -> controller.getLeftY() * -1,
-            // Left stick X = strafe (negated - left is negative)
+            // Left stick X = strafe (negated to match driver expectations - pushing right gives negative value)
             () -> controller.getLeftX() * -1)
-        // Right stick X = rotation (negated)
+        // Right stick X = rotation
         .withControllerRotationAxis(() -> controller.getRightX() * -1)
         // Field-relative driving (robot moves relative to field, not robot)
         .robotRelative(false)
