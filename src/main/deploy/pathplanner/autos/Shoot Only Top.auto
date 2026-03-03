@@ -1,0 +1,25 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Hold Top"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "autoDumpAll"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Shoot Only",
+  "choreoAuto": false
+}

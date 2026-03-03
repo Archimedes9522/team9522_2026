@@ -9,13 +9,10 @@ import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.Pounds;
 import static edu.wpi.first.units.Units.RPM;
 
-import org.littletonrobotics.junction.Logger;
-
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 
 import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.HopperConstants;
@@ -34,23 +31,18 @@ import yams.motorcontrollers.local.SparkWrapper;
  * Hopper subsystem for FUEL ball storage and queuing.
  * 
  * <p>The hopper stores FUEL balls between the intake and shooter.
- * Uses beam break sensors to detect ball positions.
+ * Beam break sensors are not installed on this robot.
  * 
  * <p>Hardware:
  * <ul>
  *   <li>1x NEO motor with 4:1 reduction</li>
- *   <li>Entry beam break sensor (optional)</li>
- *   <li>Exit beam break sensor (optional)</li>
+ *   <li>No ball sensors installed</li>
  * </ul>
  */
 public class HopperSubsystem extends SubsystemBase {
 
   // === MOTORS ===
   private final SparkMax hopperMotor;
-
-  // === SENSORS ===
-  private final DigitalInput entryBeamBreak;
-  private final DigitalInput exitBeamBreak;
 
   // === YAMS CONTROLLER ===
   private final SmartMotorController motorController;
@@ -63,15 +55,11 @@ public class HopperSubsystem extends SubsystemBase {
     // Initialize motor
     hopperMotor = new SparkMax(HopperConstants.kMotorId, MotorType.kBrushless);
 
-    // Initialize beam break sensors
-    entryBeamBreak = new DigitalInput(HopperConstants.kEntryBeamBreakPort);
-    exitBeamBreak = new DigitalInput(HopperConstants.kExitBeamBreakPort);
-
     // Configure YAMS SmartMotorController
     SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
         .withControlMode(ControlMode.OPEN_LOOP)
         .withTelemetry("HopperMotor", TelemetryVerbosity.HIGH)
-        .withGearing(new MechanismGearing(GearBox.fromReductionStages(4)))  // 4:1 reduction
+  .withGearing(new MechanismGearing(GearBox.fromReductionStages(HopperConstants.kGearRatio)))
         .withMotorInverted(true)
         .withIdleMode(MotorMode.BRAKE)
         .withStatorCurrentLimit(Amps.of(HopperConstants.kCurrentLimitAmps));
@@ -127,29 +115,28 @@ public class HopperSubsystem extends SubsystemBase {
   /**
    * Checks if a ball is at the entry sensor.
    * 
-   * @return True if ball detected at entry
+   * @return Always false (no sensors installed)
    */
   public boolean hasBallAtEntry() {
-    // Beam break returns false when broken (ball present)
-    return !entryBeamBreak.get();
+    return false;
   }
 
   /**
    * Checks if a ball is at the exit sensor (ready to feed to shooter).
    * 
-   * @return True if ball detected at exit
+   * @return Always false (no sensors installed)
    */
   public boolean hasBallAtExit() {
-    return !exitBeamBreak.get();
+    return false;
   }
 
   /**
    * Checks if the hopper has any balls.
    * 
-   * @return True if ball detected at either sensor
+   * @return Always false (no sensors installed)
    */
   public boolean hasBall() {
-    return hasBallAtEntry() || hasBallAtExit();
+    return false;
   }
 
   // ==================== PERIODIC ====================
@@ -157,8 +144,6 @@ public class HopperSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     hopper.updateTelemetry();
-    Logger.recordOutput("Hopper/BallAtEntry", hasBallAtEntry());
-    Logger.recordOutput("Hopper/BallAtExit", hasBallAtExit());
   }
 
   @Override

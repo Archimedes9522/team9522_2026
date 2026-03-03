@@ -47,8 +47,8 @@ import yams.motorcontrollers.local.SparkWrapper;
  * 
  * <p>Hardware:
  * <ul>
- *   <li>1x NEO motor for pivot arm (5:1 × 5:1 × 60/18 = 83.33:1 reduction)</li>
- *   <li>1x NEO motor for rollers (using SparkMax instead of ThriftyNova)</li>
+the *   <li>1x NEO motor for pivot arm (16:1 MAXPlanetary × 60/18 belt = 53.33:1 reduction)</li>
+ *   <li>1x NEO motor for rollers (4:1 REV Sport Gearbox)</li>
  * </ul>
  */
 public class IntakeSubsystem extends SubsystemBase {
@@ -81,7 +81,7 @@ public class IntakeSubsystem extends SubsystemBase {
     SmartMotorControllerConfig rollerConfig = new SmartMotorControllerConfig(this)
         .withControlMode(ControlMode.OPEN_LOOP)
         .withTelemetry("IntakeRollerMotor", TelemetryVerbosity.HIGH)
-        .withGearing(new MechanismGearing(GearBox.fromReductionStages(1)))  // Direct drive
+  .withGearing(new MechanismGearing(GearBox.fromReductionStages(IntakeConstants.kRollerGearRatio)))
         .withMotorInverted(true)
         .withIdleMode(MotorMode.COAST)
         .withStatorCurrentLimit(Amps.of(IntakeConstants.kRollerCurrentLimitAmps));
@@ -106,7 +106,7 @@ public class IntakeSubsystem extends SubsystemBase {
             DegreesPerSecondPerSecond.of(360))
         .withFeedforward(new SimpleMotorFeedforward(0, 10, 0))
         .withTelemetry("IntakePivotMotor", TelemetryVerbosity.HIGH)
-        .withGearing(new MechanismGearing(GearBox.fromReductionStages(5, 5, 60.0 / 18.0)))
+  .withGearing(new MechanismGearing(GearBox.fromReductionStages(IntakeConstants.kPivotGearRatio)))
         .withMotorInverted(false)
         .withIdleMode(MotorMode.COAST)
         .withSoftLimit(Degrees.of(0), Degrees.of(150))

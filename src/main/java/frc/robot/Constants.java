@@ -41,7 +41,7 @@ public final class Constants {
    * Set to false once mechanisms (shooter, turret, hood, intake, hopper, kicker)
    * are physically wired and connected.
    */
-  public static final boolean kChassisOnly = true;
+  public static final boolean kChassisOnly = false;
 
   // === CONTROLLER BUTTON MAPPINGS ===
   /** Right bumper puts the swerve drive into X-stance (wheels pointed inward to resist pushing) */
@@ -285,15 +285,15 @@ public final class Constants {
    * Turret mechanism constants.
    * 
    * <p>The turret rotates the shooter ±90° to aim at the hub.
-   * Uses a NEO motor with a 40:1 reduction and REV Through Bore Encoder for absolute position.
-   * The Through Bore Encoder plugs directly into the Spark MAX data port.
+   * Uses a NEO Vortex motor with a 40:1 reduction (4:1 REV Sport Gearbox + 200:20 gear).
+   * REV Through Bore Encoder plugs directly into the SparkFlex data port.
    */
   public static final class TurretConstants {
-    /** CAN ID for the turret motor */
+    /** CAN ID for the turret motor (NEO Vortex) */
     public static final int kMotorId = 17;
     
     // NOTE: kEncoderId is no longer needed - REV Through Bore Encoder
-    // plugs directly into the Spark MAX data port (no CAN ID required)
+    // plugs directly into the SparkFlex data port (no CAN ID required)
     
     /** Total gear reduction from motor to turret output */
     public static final double kGearRatio = 40.0;
@@ -318,12 +318,17 @@ public final class Constants {
   /**
    * Hood mechanism constants.
    * 
-   * <p>The hood is FIXED at a constant angle (not adjustable like some 2022 robots).
-   * The shooting trajectory is controlled purely by flywheel speed.
-   * Uses a NEO 550 with a 50:1 reduction.
+   * <p>The hood is FIXED at a constant angle — no motor for the first qualifier.
+   * A fixed polycarb hood is used. The shooting trajectory is controlled purely
+   * by flywheel speed. A motorized hood may be added later.
+   * 
+   * <p>The HoodSubsystem runs in no-op mode (no physical motor).
    */
   public static final class HoodConstants {
-    /** CAN ID for the hood motor */
+    /** Whether the hood motor is physically present on the robot */
+    public static final boolean kHasMotor = false;
+    
+    /** CAN ID for the hood motor (unused when kHasMotor = false) */
     public static final int kMotorId = 19;
     
     /** Total gear reduction from motor to hood output */
@@ -358,6 +363,10 @@ public final class Constants {
    * Intake mechanism constants.
    * 
    * <p>The intake has a pivot arm and rollers to collect FUEL from the floor.
+   * <ul>
+   *   <li>Rollers: 4:1 REV Sport Gearbox + 1:1 belt = 4:1 total</li>
+   *   <li>Pivot: 16:1 MAXPlanetary + 60:18 belt = 53.33:1 total</li>
+   * </ul>
    */
   public static final class IntakeConstants {
     /** CAN ID for the intake pivot motor */
@@ -366,8 +375,11 @@ public final class Constants {
     /** CAN ID for the intake roller motor */
     public static final int kRollerMotorId = 21;
     
-    /** Pivot gear reduction */
-    public static final double kPivotGearRatio = 5.0 * 5.0 * (60.0 / 18.0); // 83.33:1
+    /** Roller gear reduction: 4:1 REV Sport Gearbox + 1:1 belt */
+    public static final double kRollerGearRatio = 4.0;
+    
+    /** Pivot gear reduction: 16:1 MAXPlanetary + 60:18 belt = 53.33:1 */
+    public static final double kPivotGearRatio = 16.0 * (60.0 / 18.0); // 53.33:1
     
     /** Deployed angle in degrees (down to ground) */
     public static final double kDeployedAngleDegrees = 90.0;
@@ -392,13 +404,17 @@ public final class Constants {
   }
 
   /**
-   * Hopper mechanism constants.
+   * Hopper (Indexer) mechanism constants.
    * 
-   * <p>The hopper stores FUEL balls between intake and shooter.
+   * <p>The hopper/indexer stores and queues FUEL balls between intake and shooter.
+   * Uses a 4:1 MAXPlanetary Sport Gearbox + 1:1 belt = 4:1 total.
    */
   public static final class HopperConstants {
     /** CAN ID for the hopper motor */
     public static final int kMotorId = 22;
+    
+    /** Gear reduction: 4:1 MAXPlanetary Sport Gearbox + 1:1 belt */
+    public static final double kGearRatio = 4.0;
     
     /** DIO port for the entry beam break sensor */
     public static final int kEntryBeamBreakPort = 0;
@@ -420,10 +436,14 @@ public final class Constants {
    * Kicker mechanism constants.
    * 
    * <p>The kicker feeds FUEL from the hopper into the shooter.
+   * Uses a NEO motor with 4:1 gearbox + 32:40 gear = 3.2:1 total.
    */
   public static final class KickerConstants {
-    /** CAN ID for the kicker motor */
+    /** CAN ID for the kicker motor (NEO) */
     public static final int kMotorId = 23;
+    
+    /** Gear reduction: 4:1 gearbox + 32:40 gear transmission */
+    public static final double kGearRatio = 4.0 * (32.0 / 40.0); // 3.2:1
     
     /** Feed speed (duty cycle, -1 to 1) */
     public static final double kFeedSpeed = 1.0;

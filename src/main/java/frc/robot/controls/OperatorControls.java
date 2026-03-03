@@ -29,8 +29,8 @@ import frc.robot.subsystems.mechanisms.Superstructure;
  *   <li>B Button: Back feed (reverse hopper and kicker)</li>
  *   <li>Left Bumper: Toggle auto-aim (shoot on the move)</li>
  *   <li>D-Pad Up: Turret forward</li>
- *   <li>D-Pad Left: Turret left (90°)</li>
- *   <li>D-Pad Right: Turret right (-90°)</li>
+ *   <li>D-Pad Left: Turret left (+45°)</li>
+ *   <li>D-Pad Right: Turret right (-45°)</li>
  *   <li>Start: Re-zero intake pivot and turret</li>
  * </ul>
  */
@@ -104,12 +104,12 @@ public class OperatorControls {
         .onTrue(superstructure.setTurretForward()
             .withName("OperatorControls.setTurretForward"));
     
-    // D-Pad Left: Turret left (+90°)
+    // D-Pad Left: Turret left (+45°)
     controller.povLeft()
         .onTrue(superstructure.setTurretLeft()
             .withName("OperatorControls.setTurretLeft"));
     
-    // D-Pad Right: Turret right (-90°)
+    // D-Pad Right: Turret right (-45°)
     controller.povRight()
         .onTrue(superstructure.setTurretRight()
             .withName("OperatorControls.setTurretRight"));

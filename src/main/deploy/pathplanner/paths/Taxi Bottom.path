@@ -4,28 +4,28 @@
     {
       "anchor": {
         "x": 1.5,
-        "y": 4.0
+        "y": 0.8
       },
       "prevControl": null,
       "nextControl": {
-        "x": 1.49,
-        "y": 4.0
+        "x": 3.0,
+        "y": 0.8
       },
       "isLocked": false,
-      "linkedName": "StartCenter"
+      "linkedName": "StartBottom"
     },
     {
       "anchor": {
-        "x": 1.48,
-        "y": 4.0
+        "x": 6.0,
+        "y": 0.8
       },
       "prevControl": {
-        "x": 1.49,
-        "y": 4.0
+        "x": 4.5,
+        "y": 0.8
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": null
+      "linkedName": "TaxiBottom"
     }
   ],
   "rotationTargets": [],
@@ -33,10 +33,10 @@
   "pointTowardsZones": [],
   "eventMarkers": [],
   "globalConstraints": {
-    "maxVelocity": 0.5,
-    "maxAcceleration": 0.5,
-    "maxAngularVelocity": 90.0,
-    "maxAngularAcceleration": 360.0,
+    "maxVelocity": 3.0,
+    "maxAcceleration": 2.5,
+    "maxAngularVelocity": 360.0,
+    "maxAngularAcceleration": 540.0,
     "nominalVoltage": 12.0,
     "unlimited": false
   },
@@ -45,7 +45,7 @@
     "rotation": 0.0
   },
   "reversed": false,
-  "folder": "Stationary",
+  "folder": "Taxi",
   "idealStartingState": {
     "velocity": 0,
     "rotation": 0.0

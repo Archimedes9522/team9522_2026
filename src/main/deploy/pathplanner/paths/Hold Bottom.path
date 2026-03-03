@@ -4,24 +4,24 @@
     {
       "anchor": {
         "x": 1.5,
-        "y": 4.0
+        "y": 0.8
       },
       "prevControl": null,
       "nextControl": {
         "x": 1.49,
-        "y": 4.0
+        "y": 0.8
       },
       "isLocked": false,
-      "linkedName": "StartCenter"
+      "linkedName": "StartBottom"
     },
     {
       "anchor": {
         "x": 1.48,
-        "y": 4.0
+        "y": 0.8
       },
       "prevControl": {
         "x": 1.49,
-        "y": 4.0
+        "y": 0.8
       },
       "nextControl": null,
       "isLocked": false,

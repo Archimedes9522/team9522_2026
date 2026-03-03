@@ -19,8 +19,8 @@ import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 import com.revrobotics.spark.SparkAbsoluteEncoder;
+import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.SparkMax;
 
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -54,9 +54,9 @@ import yams.motorcontrollers.local.SparkWrapper;
  * 
  * <p>Hardware:
  * <ul>
- *   <li>1x NEO motor (Spark MAX)</li>
- *   <li>1x REV Through Bore Encoder for absolute position sensing (plugged into Spark MAX data port)</li>
- *   <li>40:1 gear reduction (4:1 gearbox × 10:1 turret gearing)</li>
+ *   <li>1x NEO Vortex motor (SparkFlex)</li>
+ *   <li>1x REV Through Bore Encoder for absolute position sensing (plugged into SparkFlex data port)</li>
+ *   <li>40:1 gear reduction (4:1 REV Sport Gearbox × 200:20 gear transmission)</li>
  *   <li>Through Bore on 1:10 overdrive from pinion = 1:1 with turret rotation</li>
  *   <li>Non-continuous rotation (limited travel)</li>
  * </ul>
@@ -81,7 +81,7 @@ public class TurretSubsystem extends SubsystemBase {
   private static final double THROUGH_BORE_ZERO_OFFSET = 0.0;
 
   // === HARDWARE ===
-  private final SparkMax spark;
+  private final SparkFlex spark;
   private final SparkAbsoluteEncoder throughBoreEncoder;
 
   // === YAMS CONTROLLER ===
@@ -95,11 +95,11 @@ public class TurretSubsystem extends SubsystemBase {
    * Creates a new TurretSubsystem.
    */
   public TurretSubsystem() {
-    // Initialize motor
-    spark = new SparkMax(TurretConstants.kMotorId, MotorType.kBrushless);
+    // Initialize motor (NEO Vortex uses SparkFlex)
+    spark = new SparkFlex(TurretConstants.kMotorId, MotorType.kBrushless);
     
-    // Get the REV Through Bore Encoder from the Spark MAX data port
-    // The Through Bore is plugged directly into the Spark MAX's absolute encoder port
+    // Get the REV Through Bore Encoder from the SparkFlex data port
+    // The Through Bore is plugged directly into the SparkFlex's absolute encoder port
     throughBoreEncoder = spark.getAbsoluteEncoder();
 
     // Configure YAMS SmartMotorController
@@ -122,7 +122,7 @@ public class TurretSubsystem extends SubsystemBase {
           .withClosedLoopRampRate(Seconds.of(0))  // Remove ramp for faster response
           .withOpenLoopRampRate(Seconds.of(0));
 
-    motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
+    motorController = new SparkWrapper(spark, DCMotor.getNeoVortex(1), smcConfig);
 
     // Configure YAMS Pivot - MOI matching CA26 (0.05)
     // Get starting position from Through Bore Encoder if on real robot
@@ -156,7 +156,7 @@ public class TurretSubsystem extends SubsystemBase {
    * The encoder is on a 1:10 overdrive from the pinion, giving 1:1 with turret rotation.
    * This survives power cycles and always knows the true turret position.
    * 
-   * <p>The Spark MAX absolute encoder API returns 0.0 to 1.0 rotations.
+   * <p>The SparkFlex absolute encoder API returns 0.0 to 1.0 rotations.
    * We convert to ±180° centered on the zero offset.
    * 
    * @return Absolute turret angle
@@ -206,7 +206,8 @@ public class TurretSubsystem extends SubsystemBase {
    * <p>This method directly controls the motor without creating a command,
    * so it can be called from within another command's execute() method.
    * 
-   * @param angle Target angle (0 = forward, positive = left, negative = right)
+  * @param angle Target angle (0 = turret forward, positive = left, negative = right)
+  *              Note: turret forward points toward the robot rear due to backwards mounting.
    */
   public void setTargetAngle(Angle angle) {
     // Clamp to soft limits

@@ -41,8 +41,8 @@ public class VisionConstants {
       AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
 
   // === CAMERA CONFIGURATION ===
-  // Camera names MUST match the names configured in PhotonVision exactly!
-  // Currently using SINGLE CAMERA setup: Rubik Pi 3 mounted at back-left.
+    // Camera names MUST match the names configured in PhotonVision exactly!
+    // Currently using SINGLE CAMERA setup: Rubik Pi 3 mounted at back-left.
   
   /** 
    * Name of the primary camera (Rubik Pi 3 with PhotonVision).
@@ -153,6 +153,12 @@ public class VisionConstants {
   /** Baseline rotation uncertainty in radians (for 1 tag at 1 meter) */
   public static double angularStdDevBaseline = 0.06;
 
+    /**
+     * Enable verbose per-camera and summary pose logging in Vision.
+     * Disable to reduce log size and NT bandwidth when not actively tuning vision.
+     */
+    public static boolean kVerboseVisionLogs = false;
+
   /**
    * Per-camera trust multipliers.
    * Higher values = less trust (higher uncertainty).
@@ -161,8 +167,8 @@ public class VisionConstants {
    */
   public static double[] cameraStdDevFactors =
       new double[] {
-        1.0, // Camera 0 (front) - fully trusted
-        1.0  // Camera 1 (back) - fully trusted
+                1.0, // Camera 0 (back) - fully trusted
+                1.0  // Camera 1 (front) - fully trusted
       };
 
   // === MEGATAG 2 SPECIFIC SETTINGS ===

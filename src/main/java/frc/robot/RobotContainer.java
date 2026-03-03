@@ -8,7 +8,6 @@ import static edu.wpi.first.units.Units.Inches;
 import static frc.robot.subsystems.vision.VisionConstants.*;
 
 import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.auto.NamedCommands;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -24,7 +23,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ControllerConstants;
-import frc.robot.commands.ShootOnTheMoveCommand;
+import frc.robot.commands.AutoCommands;
 import frc.robot.controls.DriverControls;
 import frc.robot.controls.OperatorControls;
 import frc.robot.controls.PoseControls;
@@ -121,8 +120,8 @@ public class RobotContainer {
                 // ==================== MECHANISM SUBSYSTEM INITIALIZATION ====================
                 // Only create mechanism subsystems when they are physically connected.
                 // In chassis-only mode (kChassisOnly = true), skip initialization to avoid
-                // CAN bus timeouts on missing SparkMax controllers (IDs 15-23).
-                // Each missing SparkMax causes ~30s of blocking timeout = 5+ minute startup!
+                // CAN bus timeouts on missing SparkMax/SparkFlex controllers (IDs 15-23).
+                // Each missing controller causes ~30s of blocking timeout = 5+ minute startup!
                 if (!Constants.kChassisOnly) {
                         m_shooter = new ShooterSubsystem();
                         m_turret = new TurretSubsystem();
@@ -183,39 +182,8 @@ public class RobotContainer {
 
                 // ==================== PATHPLANNER NAMED COMMANDS ====================
                 // Named commands can be triggered from PathPlanner autonomous paths.
-                NamedCommands.registerCommand("setX", m_robotDrive.setXCommand());
-                NamedCommands.registerCommand("zeroHeading", m_robotDrive.zeroHeadingCommand());
-                
-                // Register mechanism commands only when mechanisms are available
-                if (m_superstructure != null) {
-                        NamedCommands.registerCommand("shoot", m_superstructure.shootCommand());
-                        NamedCommands.registerCommand("intake", m_superstructure.setIntakeDeployAndRoll());
-                        NamedCommands.registerCommand("feedAll", m_superstructure.feedAllCommand());
-                        NamedCommands.registerCommand("stopShooting", m_superstructure.stopShootingCommand());
-                        NamedCommands.registerCommand("stopAll", m_superstructure.stopAllCommand());
-                        NamedCommands.registerCommand("eject", m_superstructure.ejectCommand());
-                        
-                        NamedCommands.registerCommand("enableAutoAim", 
-                                new ShootOnTheMoveCommand(m_robotDrive, m_superstructure, 
-                                        () -> m_superstructure.getAimPoint()));
-                        NamedCommands.registerCommand("disableAutoAim", 
-                                Commands.runOnce(() -> {}).withName("AutoAim.disable"));
-                        
-                        if (Robot.isSimulation()) {
-                                NamedCommands.registerCommand("fireFuel", 
-                                        DriverControls.fireFuel(m_robotDrive, m_superstructure));
-                                NamedCommands.registerCommand("fireFuelRepeating",
-                                        Commands.repeatingSequence(
-                                                DriverControls.fireFuel(m_robotDrive, m_superstructure),
-                                                Commands.waitSeconds(0.1))
-                                        .withName("AutoFire.repeating"));
-                        } else {
-                                NamedCommands.registerCommand("fireFuel", 
-                                        m_superstructure.feedAllCommand().withTimeout(0.5));
-                                NamedCommands.registerCommand("fireFuelRepeating",
-                                        m_superstructure.feedAllCommand());
-                        }
-                }
+                // All commands are centralized in AutoCommands.java for easy reference.
+                AutoCommands.registerAll(m_robotDrive, m_superstructure);
                 
                 // ==================== CONTROLLER BINDINGS ====================
                 DriverControls.configure(

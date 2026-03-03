@@ -11,6 +11,8 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
+import edu.wpi.first.wpilibj.Alert;
+import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -70,6 +72,20 @@ public class Robot extends LoggedRobot {
   
   /** Power Distribution Hub for voltage/current monitoring */
   private final PowerDistribution m_pdh = new PowerDistribution(1, ModuleType.kRev);
+
+  // === ALERTS (Driver Station / SmartDashboard Alerts) ===
+  private final Alert chassisOnlyAlert =
+    new Alert("Chassis-only mode enabled (mechanisms disabled)", AlertType.kWarning);
+  private final Alert lowBatteryAlert =
+    new Alert("Battery voltage low (< 11.5V)", AlertType.kWarning);
+  private final Alert visionDisconnectedAlert =
+    new Alert("Vision camera disconnected", AlertType.kWarning);
+  private final Alert visionNoTagsAlert =
+    new Alert("Vision connected but no tags visible", AlertType.kInfo);
+  private final Alert shooterNotReadyAlert =
+    new Alert("Shooter not at speed", AlertType.kInfo);
+  private final Alert autoAimInactiveAlert =
+    new Alert("Auto-aim inactive", AlertType.kInfo);
   
   /** MapleSim arena for 2026 "Rebuilt" game simulation */
   private SimulatedArena m_arena;
@@ -91,7 +107,7 @@ public class Robot extends LoggedRobot {
         Logger.recordMetadata("GitDirty", "All changes committed");
         break;
       case 1:
-        Logger.recordMetadata("GitDirty", "Uncomitted changes");
+        Logger.recordMetadata("GitDirty", "Uncommitted changes");
         break;
       default:
         Logger.recordMetadata("GitDirty", "Unknown");
@@ -262,6 +278,9 @@ public class Robot extends LoggedRobot {
     // === VISION STATUS ===
     SmartDashboard.putNumber("Vision Tags Seen", 0);
     SmartDashboard.putBoolean("Vision Connected", false);
+
+    // === ALERTS / FLAGS ===
+    SmartDashboard.putBoolean("Chassis Only", Constants.kChassisOnly);
     
     // === MECHANISM STATUS (only when mechanisms are available) ===
     if (m_robotContainer.getSuperstructure() != null) {
@@ -275,6 +294,26 @@ public class Robot extends LoggedRobot {
     SmartDashboard.putBoolean("Reset Pose", false);     // Button to reset odometry
     SmartDashboard.putBoolean("Lock Wheels", false);    // Button to lock wheels in X
     SmartDashboard.putBoolean("Zero Gyro", false);      // Button to zero gyro heading
+
+    // === ELASTIC DASHBOARD GROUP (prefix: Elastic/) ===
+    SmartDashboard.putNumber("Elastic/Robot/X", 0.0);
+    SmartDashboard.putNumber("Elastic/Robot/Y", 0.0);
+    SmartDashboard.putNumber("Elastic/Robot/HeadingDeg", 0.0);
+    SmartDashboard.putNumber("Elastic/Robot/SpeedMps", 0.0);
+    SmartDashboard.putBoolean("Elastic/ChassisOnly", Constants.kChassisOnly);
+    SmartDashboard.putBoolean("Elastic/Vision/Connected", false);
+    SmartDashboard.putNumber("Elastic/Vision/Tags", 0.0);
+    SmartDashboard.putNumber("Elastic/Shooter/RPM", 0.0);
+    SmartDashboard.putBoolean("Elastic/Shooter/Ready", false);
+    SmartDashboard.putNumber("Elastic/Turret/AngleDeg", 0.0);
+    SmartDashboard.putBoolean("Elastic/AutoAim/Active", false);
+    SmartDashboard.putNumber("Elastic/MatchTime", 0.0);
+    SmartDashboard.putNumber("Elastic/Robot/OmegaDegPerSec", 0.0);
+    SmartDashboard.putNumber("Elastic/Power/Voltage", 0.0);
+    SmartDashboard.putNumber("Elastic/Power/CurrentA", 0.0);
+    SmartDashboard.putBoolean("Elastic/Intake/Deployed", false);
+    SmartDashboard.putNumber("Elastic/Hood/AngleDeg", 0.0);
+    SmartDashboard.putNumber("Elastic/Aim/DistanceM", 0.0);
   }
 
   /** Update SmartDashboard values every loop */
@@ -283,6 +322,7 @@ public class Robot extends LoggedRobot {
     SmartDashboard.putNumber("Match Time", Timer.getMatchTime());
     SmartDashboard.putNumber("PDH Voltage", m_pdh.getVoltage());
     SmartDashboard.putNumber("PDH Current (A)", m_pdh.getTotalCurrent());
+    SmartDashboard.putBoolean("Chassis Only", Constants.kChassisOnly);
 
     // === ROBOT POSE ===
     var robotPose = m_robotContainer.m_robotDrive.getPose();
@@ -290,6 +330,9 @@ public class Robot extends LoggedRobot {
     SmartDashboard.putNumber("Robot X (m)", robotPose.getX());
     SmartDashboard.putNumber("Robot Y (m)", robotPose.getY());
     SmartDashboard.putNumber("Robot Heading (deg)", robotPose.getRotation().getDegrees());
+    SmartDashboard.putNumber("Elastic/Robot/X", robotPose.getX());
+    SmartDashboard.putNumber("Elastic/Robot/Y", robotPose.getY());
+    SmartDashboard.putNumber("Elastic/Robot/HeadingDeg", robotPose.getRotation().getDegrees());
     
     // === ROBOT VELOCITY ===
     var chassisSpeeds = m_robotContainer.m_robotDrive.getRobotRelativeSpeeds();
@@ -298,8 +341,11 @@ public class Robot extends LoggedRobot {
     SmartDashboard.putNumber("Robot Vx (m/s)", chassisSpeeds.vxMetersPerSecond);
     SmartDashboard.putNumber("Robot Vy (m/s)", chassisSpeeds.vyMetersPerSecond);
     SmartDashboard.putNumber("Robot Omega (deg/s)", Math.toDegrees(chassisSpeeds.omegaRadiansPerSecond));
-    
-    // === GYRO DATA ===
+    SmartDashboard.putNumber("Elastic/Robot/SpeedMps", robotSpeed);
+    SmartDashboard.putNumber("Elastic/Robot/OmegaDegPerSec", Math.toDegrees(chassisSpeeds.omegaRadiansPerSecond));
+    SmartDashboard.putNumber("Elastic/MatchTime", Timer.getMatchTime());
+    SmartDashboard.putNumber("Elastic/Power/Voltage", m_pdh.getVoltage());
+    SmartDashboard.putNumber("Elastic/Power/CurrentA", m_pdh.getTotalCurrent());
     SmartDashboard.putNumber("Gyro Angle (deg)", m_robotContainer.m_robotDrive.getHeading());
     SmartDashboard.putNumber("Gyro Pitch (deg)", 0); // YAGSL manages gyro internally
     SmartDashboard.putNumber("Gyro Roll (deg)", 0);
@@ -307,18 +353,47 @@ public class Robot extends LoggedRobot {
     // === MECHANISM STATUS (only when mechanisms are available) ===
     var superstructure = m_robotContainer.getSuperstructure();
     if (superstructure != null) {
-      SmartDashboard.putNumber("Turret Angle (deg)", 
-          superstructure.getTurretAngle().in(edu.wpi.first.units.Units.Degrees));
-      SmartDashboard.putNumber("Shooter RPM", 
-          superstructure.getShooterSpeed().in(edu.wpi.first.units.Units.RPM));
-      SmartDashboard.putBoolean("Shooter Ready", superstructure.isReadyToShoot());
+      double turretAngleDeg = superstructure.getTurretAngle().in(edu.wpi.first.units.Units.Degrees);
+      double shooterRpm = superstructure.getShooterSpeed().in(edu.wpi.first.units.Units.RPM);
+      boolean shooterReady = superstructure.isReadyToShoot();
+
+      SmartDashboard.putNumber("Turret Angle (deg)", turretAngleDeg);
+      SmartDashboard.putNumber("Shooter RPM", shooterRpm);
+      SmartDashboard.putBoolean("Shooter Ready", shooterReady);
+      SmartDashboard.putNumber("Elastic/Turret/AngleDeg", turretAngleDeg);
+      SmartDashboard.putNumber("Elastic/Shooter/RPM", shooterRpm);
+      SmartDashboard.putBoolean("Elastic/Shooter/Ready", shooterReady);
       
+      // === INTAKE / HOPPER / HOOD STATUS ===
+      boolean intakeDeployed = superstructure.intake.isDeployed();
+      double hoodAngleDeg = superstructure.getHoodAngle().in(edu.wpi.first.units.Units.Degrees);
+      SmartDashboard.putBoolean("Elastic/Intake/Deployed", intakeDeployed);
+      SmartDashboard.putNumber("Elastic/Hood/AngleDeg", hoodAngleDeg);
+
       // === AIM POINT (for debugging) ===
       var aimPoint = m_robotContainer.getAimPoint();
       SmartDashboard.putNumber("Aim X (m)", aimPoint.getX());
       SmartDashboard.putNumber("Aim Y (m)", aimPoint.getY());
       SmartDashboard.putNumber("Aim Z (m)", aimPoint.getZ());
+
+      // === DISTANCE TO TARGET ===
+      var robotPose2d = m_robotContainer.m_robotDrive.getPose();
+      double distanceToTarget = Math.hypot(
+          aimPoint.getX() - robotPose2d.getX(),
+          aimPoint.getY() - robotPose2d.getY());
+      SmartDashboard.putNumber("Elastic/Aim/DistanceM", distanceToTarget);
     }
+
+    // === VISION STATUS ===
+    boolean visionConnected = SmartDashboard.getBoolean("Vision Connected", false);
+    double visionTags = SmartDashboard.getNumber("Vision Tags Seen", 0.0);
+    SmartDashboard.putBoolean("Elastic/Vision/Connected", visionConnected);
+    SmartDashboard.putNumber("Elastic/Vision/Tags", visionTags);
+
+    // === FLAGS ===
+    SmartDashboard.putBoolean("Elastic/ChassisOnly", Constants.kChassisOnly);
+    boolean autoAimActive = SmartDashboard.getBoolean("Auto-Aim Active", false);
+    SmartDashboard.putBoolean("Elastic/AutoAim/Active", autoAimActive);
 
     // === HANDLE DASHBOARD BUTTONS ===
     // Reset Pose button
@@ -337,6 +412,19 @@ public class Robot extends LoggedRobot {
     if (SmartDashboard.getBoolean("Zero Gyro", false)) {
       m_robotContainer.m_robotDrive.zeroGyro();
       SmartDashboard.putBoolean("Zero Gyro", false);
+    }
+
+    // === ALERTS ===
+    chassisOnlyAlert.set(Constants.kChassisOnly);
+    lowBatteryAlert.set(m_pdh.getVoltage() < 11.5);
+    visionDisconnectedAlert.set(!visionConnected);
+    visionNoTagsAlert.set(visionConnected && visionTags <= 0);
+    if (superstructure != null) {
+      shooterNotReadyAlert.set(!superstructure.isReadyToShoot());
+      autoAimInactiveAlert.set(!autoAimActive);
+    } else {
+      shooterNotReadyAlert.set(false);
+      autoAimInactiveAlert.set(false);
     }
   }
 

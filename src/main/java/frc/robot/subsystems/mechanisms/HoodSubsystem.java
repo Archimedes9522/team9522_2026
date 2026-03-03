@@ -39,112 +39,113 @@ import yams.motorcontrollers.SmartMotorControllerConfig.TelemetryVerbosity;
 import yams.motorcontrollers.local.SparkWrapper;
 
 /**
- * Hood subsystem using YAMS Pivot for position control.
+ * Hood subsystem for adjusting shot trajectory.
  * 
- * <p>The hood adjusts the shooter angle to control ball trajectory.
- * Higher angles for close shots, lower angles for far shots.
- * 
- * <p>Hardware:
+ * <p>Supports two modes based on {@link HoodConstants#kHasMotor}:
  * <ul>
- *   <li>1x NEO 550 motor</li>
- *   <li>50:1 gear reduction</li>
- *   <li>0° to 60° travel range</li>
+ *   <li><b>Motorized mode</b> ({@code kHasMotor = true}): Uses YAMS Pivot with a NEO 550
+ *       motor and 50:1 reduction for active angle control (0° to 60°).</li>
+ *   <li><b>Fixed mode</b> ({@code kHasMotor = false}): No physical motor — hood is a fixed
+ *       polycarb piece. All commands are no-ops and {@link #getAngle()} always returns
+ *       the fixed shooting angle. This avoids CAN bus timeouts from missing motors.</li>
  * </ul>
+ * 
+ * <p>Set {@link HoodConstants#kHasMotor} to {@code true} when a motorized hood is installed.
  */
 public class HoodSubsystem extends SubsystemBase {
 
-  // === MOTORS ===
+  // === HARDWARE (null when kHasMotor = false) ===
   private final SparkMax spark;
 
-  // === YAMS CONTROLLER ===
+  // === YAMS CONTROLLER (null when kHasMotor = false) ===
   private final SmartMotorController motorController;
   private final Pivot hood;
 
   /**
    * Creates a new HoodSubsystem.
+   * 
+   * <p>If {@link HoodConstants#kHasMotor} is false, no hardware is initialized
+   * and the hood reports a fixed angle.
    */
   public HoodSubsystem() {
-    // Initialize motor (NEO 550 for smaller mechanism)
-    spark = new SparkMax(HoodConstants.kMotorId, MotorType.kBrushless);
+    if (HoodConstants.kHasMotor) {
+      // === MOTORIZED MODE ===
+      spark = new SparkMax(HoodConstants.kMotorId, MotorType.kBrushless);
 
-    // Configure YAMS SmartMotorController
-    SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
-        .withControlMode(ControlMode.CLOSED_LOOP)
-        .withClosedLoopController(
-            100, 0, 0,
-            DegreesPerSecond.of(90),
-            DegreesPerSecondPerSecond.of(90))
-        .withFeedforward(new ArmFeedforward(0, 0.3, 0.1))  // Gravity compensation for arm
-        .withTelemetry("HoodMotor", TelemetryVerbosity.HIGH)
-        .withGearing(new MechanismGearing(GearBox.fromReductionStages(HoodConstants.kGearRatio)))
-        .withMotorInverted(false)
-        .withIdleMode(MotorMode.BRAKE)  // Brake to hold position
-        .withSoftLimit(
-            Degrees.of(HoodConstants.kMinAngleDegrees),
-            Degrees.of(HoodConstants.kMaxAngleDegrees))
-        .withStatorCurrentLimit(Amps.of(HoodConstants.kCurrentLimitAmps))
-        .withClosedLoopRampRate(Seconds.of(0.1))
-        .withOpenLoopRampRate(Seconds.of(0.1));
+      SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
+          .withControlMode(ControlMode.CLOSED_LOOP)
+          .withClosedLoopController(
+              100, 0, 0,
+              DegreesPerSecond.of(90),
+              DegreesPerSecondPerSecond.of(90))
+          .withFeedforward(new ArmFeedforward(0, 0.3, 0.1))
+          .withTelemetry("HoodMotor", TelemetryVerbosity.HIGH)
+          .withGearing(new MechanismGearing(GearBox.fromReductionStages(HoodConstants.kGearRatio)))
+          .withMotorInverted(false)
+          .withIdleMode(MotorMode.BRAKE)
+          .withSoftLimit(
+              Degrees.of(HoodConstants.kMinAngleDegrees),
+              Degrees.of(HoodConstants.kMaxAngleDegrees))
+          .withStatorCurrentLimit(Amps.of(HoodConstants.kCurrentLimitAmps))
+          .withClosedLoopRampRate(Seconds.of(0.1))
+          .withOpenLoopRampRate(Seconds.of(0.1));
 
-    motorController = new SparkWrapper(spark, DCMotor.getNeo550(1), smcConfig);
+      motorController = new SparkWrapper(spark, DCMotor.getNeo550(1), smcConfig);
 
-    // Configure YAMS Pivot
-    PivotConfig hoodConfig = new PivotConfig(motorController)
-        .withHardLimit(
-            Degrees.of(HoodConstants.kMinAngleDegrees - 5),
-            Degrees.of(HoodConstants.kMaxAngleDegrees + 5))
-        .withStartingPosition(Degrees.of(HoodConstants.kStowedAngleDegrees))
-        .withMOI(KilogramSquareMeters.of(0.001))  // Small moment of inertia
-        .withTelemetry("Hood", TelemetryVerbosity.HIGH);
+      PivotConfig hoodConfig = new PivotConfig(motorController)
+          .withHardLimit(
+              Degrees.of(HoodConstants.kMinAngleDegrees - 5),
+              Degrees.of(HoodConstants.kMaxAngleDegrees + 5))
+          .withStartingPosition(Degrees.of(HoodConstants.kStowedAngleDegrees))
+          .withMOI(KilogramSquareMeters.of(0.001))
+          .withTelemetry("Hood", TelemetryVerbosity.HIGH);
 
-    hood = new Pivot(hoodConfig);
+      hood = new Pivot(hoodConfig);
+    } else {
+      // === FIXED MODE (no motor) ===
+      System.out.println("[Hood] No motor configured (kHasMotor=false). Running in fixed-angle mode at "
+          + HoodConstants.kFixedShootingAngle + "°");
+      spark = null;
+      motorController = null;
+      hood = null;
+    }
   }
 
   // ==================== COMMANDS ====================
 
   /**
-   * Directly sets the hood target angle. Call this every loop when doing
-   * dynamic aiming from a command that already requires this subsystem.
-   * 
-   * <p>This method directly controls the motor without creating a command,
-   * so it can be called from within another command's execute() method.
-   * 
-   * @param angle Target angle (0° = flat, higher = steeper)
+   * Directly sets the hood target angle.
+   * No-op in fixed mode.
    */
   public void setTargetAngle(Angle angle) {
-    // Clamp to soft limits
+    if (hood == null) return;
     double angleDeg = angle.in(Degrees);
-    double clampedDeg = Math.max(HoodConstants.kMinAngleDegrees, 
+    double clampedDeg = Math.max(HoodConstants.kMinAngleDegrees,
                                   Math.min(HoodConstants.kMaxAngleDegrees, angleDeg));
-    // Use direct motor control instead of scheduling a command to avoid conflicts
     motorController.setPosition(Degrees.of(clampedDeg));
   }
 
   /**
    * Sets the hood to a specific angle.
-   * 
-   * @param angle Target angle (0° = flat, higher = steeper)
-   * @return Command that moves to the angle
+   * Returns an instant no-op command in fixed mode.
    */
   public Command setAngle(Angle angle) {
+    if (hood == null) return Commands.none().withName("Hood.fixedAngle");
     return hood.setAngle(angle);
   }
 
   /**
    * Sets the hood to a dynamic angle from a supplier.
-   * Useful for range-based shooting where angle changes with distance.
-   * 
-   * @param hoodAngleSupplier Supplier that provides target angle
-   * @return Command that continuously updates angle
+   * Returns an instant no-op command in fixed mode.
    */
   public Command setAngleDynamic(Supplier<Angle> hoodAngleSupplier) {
+    if (hood == null) return Commands.none().withName("Hood.fixedAngle");
     return hood.setAngle(hoodAngleSupplier);
   }
 
   /**
    * Stows the hood to minimum angle.
-   * 
-   * @return Command that stows the hood
+   * No-op in fixed mode.
    */
   public Command stow() {
     return setAngle(Degrees.of(HoodConstants.kStowedAngleDegrees));
@@ -152,8 +153,7 @@ public class HoodSubsystem extends SubsystemBase {
 
   /**
    * Sets the hood to maximum angle.
-   * 
-   * @return Command that moves to max angle
+   * No-op in fixed mode.
    */
   public Command max() {
     return setAngle(Degrees.of(HoodConstants.kMaxAngleDegrees));
@@ -161,31 +161,29 @@ public class HoodSubsystem extends SubsystemBase {
 
   /**
    * Sets the hood to open-loop duty cycle control.
-   * 
-   * @param dutyCycle Motor output (-1 to 1)
-   * @return Command that applies the duty cycle
+   * No-op in fixed mode.
    */
   public Command set(double dutyCycle) {
+    if (hood == null) return Commands.none().withName("Hood.fixedAngle");
     return hood.set(dutyCycle);
   }
 
   /**
    * Resets the hood encoder to zero.
-   * Use when hood is physically at the minimum position.
-   * 
-   * @return Command that resets the encoder
+   * No-op in fixed mode.
    */
   public Command rezero() {
+    if (spark == null) return Commands.none().withName("Hood.noMotor");
     return Commands.runOnce(() -> spark.getEncoder().setPosition(0), this)
         .withName("Hood.Rezero");
   }
 
   /**
    * Runs system identification for tuning.
-   * 
-   * @return SysId command sequence
+   * No-op in fixed mode.
    */
   public Command sysId() {
+    if (hood == null) return Commands.none().withName("Hood.noMotor");
     return hood.sysId(Volts.of(7), Volts.of(2).per(Second), Seconds.of(10));
   }
 
@@ -193,21 +191,19 @@ public class HoodSubsystem extends SubsystemBase {
 
   /**
    * Gets the current hood angle.
-   * 
-   * @return Current angle
+   * In fixed mode, always returns the fixed shooting angle.
    */
   public Angle getAngle() {
+    if (hood == null) return Degrees.of(HoodConstants.kFixedShootingAngle);
     return hood.getAngle();
   }
 
   /**
    * Checks if the hood is at the target angle (within tolerance).
-   * 
-   * @param targetDegrees Target angle in degrees
-   * @param toleranceDegrees Acceptable error in degrees
-   * @return True if at target
+   * In fixed mode, always returns true (hood is always "at angle").
    */
   public boolean isAtAngle(double targetDegrees, double toleranceDegrees) {
+    if (hood == null) return true;
     double currentDegrees = getAngle().in(Degrees);
     return Math.abs(currentDegrees - targetDegrees) < toleranceDegrees;
   }
@@ -216,12 +212,17 @@ public class HoodSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
-    hood.updateTelemetry();
+    if (hood != null) {
+      hood.updateTelemetry();
+    }
     Logger.recordOutput("Hood/AngleDegrees", getAngle().in(Degrees));
+    Logger.recordOutput("Hood/HasMotor", HoodConstants.kHasMotor);
   }
 
   @Override
   public void simulationPeriodic() {
-    hood.simIterate();
+    if (hood != null) {
+      hood.simIterate();
+    }
   }
 }

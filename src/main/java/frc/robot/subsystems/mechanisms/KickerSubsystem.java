@@ -58,7 +58,7 @@ public class KickerSubsystem extends SubsystemBase {
     SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
         .withControlMode(ControlMode.OPEN_LOOP)
         .withTelemetry("KickerMotor", TelemetryVerbosity.HIGH)
-        .withGearing(new MechanismGearing(GearBox.fromReductionStages(4)))  // 4:1 reduction
+  .withGearing(new MechanismGearing(GearBox.fromReductionStages(KickerConstants.kGearRatio)))
         .withMotorInverted(true)
         .withIdleMode(MotorMode.BRAKE)
         .withStatorCurrentLimit(Amps.of(KickerConstants.kCurrentLimitAmps));

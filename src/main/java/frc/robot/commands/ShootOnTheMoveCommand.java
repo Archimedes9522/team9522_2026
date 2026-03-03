@@ -16,6 +16,7 @@ import static edu.wpi.first.units.Units.RPM;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.mechanisms.Superstructure;
 import frc.robot.Constants.HoodConstants;
@@ -39,6 +40,19 @@ public class ShootOnTheMoveCommand extends Command {
   private Angle latestHoodAngle;
   private Angle latestTurretAngle;
 
+  // === HARDENING CONSTANTS ===
+  /** Minimum distance for table lookup (meters). Closer shots clamp to this. */
+  private static final double MIN_DISTANCE_M = 2.0;
+  /** Maximum distance for table lookup (meters). Farther shots clamp to this. */
+  private static final double MAX_DISTANCE_M = 12.0;
+  /** Robot speed below which lead compensation is zeroed (m/s). Prevents jitter when nearly stopped. */
+  private static final double LEAD_DEADBAND_MPS = 0.1;
+  /** Maximum turret angle change per cycle in degrees. Prevents sudden snapping. */
+  private static final double MAX_TURRET_SLEW_DEG_PER_CYCLE = 5.0;
+
+  /** Previous turret target for slew limiting */
+  private double previousTurretTargetDeg = 0.0;
+
   public ShootOnTheMoveCommand(SwerveSubsystem drivetrain, Superstructure superstructure,
       Supplier<Translation3d> aimPointSupplier) {
     this.drivetrain = drivetrain;
@@ -54,6 +68,8 @@ public class ShootOnTheMoveCommand extends Command {
     latestHoodAngle = superstructure.getHoodAngle();
     latestTurretAngle = superstructure.getTurretAngle();
     latestShootSpeed = RPM.of(3000); // Start with a reasonable default speed
+    previousTurretTargetDeg = latestTurretAngle.in(Degrees);
+    SmartDashboard.putBoolean("Auto-Aim Active", true);
     
     System.out.println("[ShootOnTheMove] Started - aiming at " + aimPointSupplier.get());
   }
@@ -74,39 +90,47 @@ public class ShootOnTheMoveCommand extends Command {
     var shooterLocation = drivetrain.getPose3d().getTranslation()
         .plus(superstructure.getShooterPose().getTranslation());
 
-    // Ignore this parameter for now, the range tables will account for it :/
-    // var deltaH = target.getMeasureZ().minus(shooterLocation.getMeasureZ());
     var shooterOnGround = new Translation2d(shooterLocation.getX(), shooterLocation.getY());
     var targetOnGround = new Translation2d(target.getX(), target.getY());
 
-    var distanceToTarget = Meters.of(shooterOnGround.getDistance(targetOnGround));
+    double rawDistanceM = shooterOnGround.getDistance(targetOnGround);
+    
+    // ── Distance clamping ──
+    // Clamp to lookup table range so interpolation stays valid
+    double clampedDistanceM = Math.max(MIN_DISTANCE_M, Math.min(MAX_DISTANCE_M, rawDistanceM));
+    var distanceToTarget = Meters.of(clampedDistanceM);
+    Logger.recordOutput("ShootOnTheMove/RawDistanceM", rawDistanceM);
+    Logger.recordOutput("ShootOnTheMove/ClampedDistanceM", clampedDistanceM);
+    if (rawDistanceM != clampedDistanceM) {
+      Logger.recordOutput("ShootOnTheMove/DistanceClamped", true);
+    }
 
-    // Get time of flight. We could try to do this analytically but for now it's
-    // easier and more realistic
-    // to use a simple linear approximation based on empirical data.
+    // Get time of flight for lead compensation
     double timeOfFlight = getFlightTime(distanceToTarget);
 
-    // Calculate corrective vector based on our current velocity multiplied by time
-    // of flight.
-    // If we're stationary, this should be zero. If we're backing up, this will be
-    // "ahead" of the target, etc.
+    // ── Lead compensation with low-speed deadband ──
     var robotVelocity = drivetrain.getFieldRelativeSpeeds();
+    double chassisSpeedMps = Math.hypot(robotVelocity.vxMetersPerSecond, robotVelocity.vyMetersPerSecond);
     
-    // Log velocity for debugging
     Logger.recordOutput("ShootOnTheMove/RobotVelX", robotVelocity.vxMetersPerSecond);
     Logger.recordOutput("ShootOnTheMove/RobotVelY", robotVelocity.vyMetersPerSecond);
+    Logger.recordOutput("ShootOnTheMove/ChassisSpeedMps", chassisSpeedMps);
     Logger.recordOutput("ShootOnTheMove/TimeOfFlight", timeOfFlight);
-    Logger.recordOutput("ShootOnTheMove/DistanceToTarget", distanceToTarget.in(Meters));
     
-    // Corrective vector: opposite of where the ball will drift due to robot motion
-    // Ball inherits robot velocity, so aim "behind" our motion
-    // Separate scale factors for X (forward/back) and Y (left/right) compensation
-    double leadCompensationScaleX = 1.0;  // Forward/back toward/away from hub - slight increase
-    double leadCompensationScaleY = 0.5;   // Left/right - slight decrease (over-correcting left)
-    var correctiveVector = new Translation2d(
-        robotVelocity.vxMetersPerSecond * timeOfFlight * leadCompensationScaleX, 
-        robotVelocity.vyMetersPerSecond * timeOfFlight * leadCompensationScaleY)
-        .unaryMinus();
+    Translation2d correctiveVector;
+    if (chassisSpeedMps < LEAD_DEADBAND_MPS) {
+      // Robot is nearly stationary — zero out lead to prevent jitter
+      correctiveVector = new Translation2d();
+      Logger.recordOutput("ShootOnTheMove/LeadDeadbandActive", true);
+    } else {
+      double leadCompensationScaleX = 1.0;
+      double leadCompensationScaleY = 0.5;
+      correctiveVector = new Translation2d(
+          robotVelocity.vxMetersPerSecond * timeOfFlight * leadCompensationScaleX, 
+          robotVelocity.vyMetersPerSecond * timeOfFlight * leadCompensationScaleY)
+          .unaryMinus();
+      Logger.recordOutput("ShootOnTheMove/LeadDeadbandActive", false);
+    }
     
     Logger.recordOutput("ShootOnTheMove/CorrectiveX", correctiveVector.getX());
     Logger.recordOutput("ShootOnTheMove/CorrectiveY", correctiveVector.getY());
@@ -125,12 +149,9 @@ public class ShootOnTheMoveCommand extends Command {
     
     // Calculate the field-relative angle to target, then convert to robot-relative
     // The turret is mounted BACKWARDS on the robot (turret 0° = robot rear)
-    // So we need to add 180° to convert from robot-relative to turret-relative
     var fieldAngleToTarget = vectorToTarget.getAngle();
     var robotHeading = drivetrain.getRotation();
     
-    // Robot-relative angle: field angle minus robot heading
-    // Use getDegrees() directly and do manual normalization
     double fieldAngleDeg = fieldAngleToTarget.getDegrees();
     double robotHeadingDeg = robotHeading.getDegrees();
     double robotRelativeDeg = fieldAngleDeg - robotHeadingDeg;
@@ -146,29 +167,47 @@ public class ShootOnTheMoveCommand extends Command {
     while (turretAngleDeg > 180) turretAngleDeg -= 360;
     while (turretAngleDeg < -180) turretAngleDeg += 360;
     
-    // Clamp turret angle to physical turret soft limits to avoid wrap/flip behavior
+    // Clamp turret angle to physical soft limits
     double maxDeg = TurretConstants.kMaxAngleDegrees;
     double clampedDeg = Math.max(-maxDeg, Math.min(maxDeg, turretAngleDeg));
+    
+    // ── Turret slew limiting ──
+    // Prevent sudden snapping by limiting how fast the turret target can change
+    double delta = clampedDeg - previousTurretTargetDeg;
+    if (Math.abs(delta) > MAX_TURRET_SLEW_DEG_PER_CYCLE) {
+      clampedDeg = previousTurretTargetDeg + Math.signum(delta) * MAX_TURRET_SLEW_DEG_PER_CYCLE;
+      Logger.recordOutput("ShootOnTheMove/SlewLimited", true);
+    } else {
+      Logger.recordOutput("ShootOnTheMove/SlewLimited", false);
+    }
+    previousTurretTargetDeg = clampedDeg;
+    
     latestTurretAngle = Degrees.of(clampedDeg);
     latestShootSpeed = calculateRequiredShooterSpeed(correctedDistance);
     
-    // Hood is FIXED at a constant angle (like CA26) - trajectory controlled by flywheel speed
+    // Hood is FIXED at a constant angle — trajectory controlled by flywheel speed
     latestHoodAngle = Degrees.of(HoodConstants.kFixedShootingAngle);
 
-    // Log for debugging
+    // ── Error logging ──
+    double turretErrorDeg = clampedDeg - superstructure.turret.getRawAngle().in(Degrees);
+    double shooterErrorRPM = latestShootSpeed.in(RPM) - superstructure.shooter.getSpeed().in(RPM);
+    Logger.recordOutput("ShootOnTheMove/TurretErrorDeg", turretErrorDeg);
+    Logger.recordOutput("ShootOnTheMove/ShooterErrorRPM", shooterErrorRPM);
+    
+    // Log all targets
     Logger.recordOutput("ShootOnTheMove/RobotHeadingDeg", robotHeadingDeg);
     Logger.recordOutput("ShootOnTheMove/FieldAngleToTargetDeg", fieldAngleDeg);
     Logger.recordOutput("ShootOnTheMove/RobotRelativeAngleDeg", robotRelativeDeg);
     Logger.recordOutput("ShootOnTheMove/TurretAnglePreClamp", turretAngleDeg);
     Logger.recordOutput("ShootOnTheMove/ClampedTurretAngle", clampedDeg);
-    Logger.recordOutput("ShootOnTheMove/DistanceToTarget", correctedDistance);
+    Logger.recordOutput("ShootOnTheMove/DistanceToTarget", correctedDistance.in(Meters));
     Logger.recordOutput("ShootOnTheMove/TargetShooterRPM", latestShootSpeed.in(RPM));
     Logger.recordOutput("ShootOnTheMove/TargetHoodAngle", latestHoodAngle.in(Degrees));
 
     // DIRECTLY command the subsystems (we have requirements so this is safe)
     superstructure.turret.setTargetAngle(latestTurretAngle);
     superstructure.shooter.setTargetSpeed(latestShootSpeed);
-    superstructure.hood.setTargetAngle(latestHoodAngle);  // Move hood to fixed shooting position
+    superstructure.hood.setTargetAngle(latestHoodAngle);
     
     // Update setpoints for readiness triggers
     superstructure.setShooterSetpoints(latestShootSpeed, latestTurretAngle, latestHoodAngle);
@@ -176,6 +215,7 @@ public class ShootOnTheMoveCommand extends Command {
   
   @Override
   public void end(boolean interrupted) {
+    SmartDashboard.putBoolean("Auto-Aim Active", false);
     System.out.println("[ShootOnTheMove] Ended (interrupted=" + interrupted + ")");
   }
 
@@ -189,26 +229,29 @@ public class ShootOnTheMoveCommand extends Command {
   }
 
   // meters, seconds (time of flight lookup for lead compensation)
+  // CA26 values: 1m=1.0s, 4.86m=1.5s — sparse, needs more data points
   private static final InterpolatingDoubleTreeMap TIME_OF_FLIGHT_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(1.0, 0.4),
-      Map.entry(2.0, 0.5),
-      Map.entry(3.0, 0.6),
-      Map.entry(4.0, 0.7),
-      Map.entry(5.0, 0.8),
-      Map.entry(6.0, 0.9),
-      Map.entry(8.0, 1.0),
-      Map.entry(10.0, 1.1),
-      Map.entry(12.0, 1.2));
+      Map.entry(1.0, 1.0),
+      Map.entry(2.0, 1.1),
+      Map.entry(3.0, 1.2),
+      Map.entry(4.0, 1.35),
+      Map.entry(4.86, 1.5),
+      Map.entry(6.0, 1.65),
+      Map.entry(8.0, 1.85),
+      Map.entry(10.0, 2.0),
+      Map.entry(12.0, 2.2));
 
-  // meters, RPM (shooter speed lookup - TUNE THESE for fixed hood angle!)
-  // With fixed hood at 55° and hub at 72" (1.83m) height, adjust speeds for trajectory
+  // meters, RPM (shooter speed lookup - TUNE THESE on the real robot!)
+  // Based on CA26 values: 2m=2700, 3m=3000, 4m=3300, 4.86m=3750 RPM
+  // Extended with interpolated estimates for longer distances
+  // With fixed hood at 55°, flywheel speed is the only trajectory control
   private static final InterpolatingDoubleTreeMap SHOOTING_SPEED_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(2.0, 2500.0),   // Close: lower speed
-      Map.entry(3.0, 2800.0),
-      Map.entry(4.0, 3200.0),
-      Map.entry(5.0, 3600.0),
-      Map.entry(6.0, 4000.0),
-      Map.entry(8.0, 4500.0),
-      Map.entry(10.0, 5000.0),
-      Map.entry(12.0, 5500.0)); // Far: higher speed
+      Map.entry(2.0, 2700.0),   // CA26 data point
+      Map.entry(3.0, 3000.0),   // CA26 data point
+      Map.entry(4.0, 3300.0),   // CA26 data point
+      Map.entry(4.86, 3750.0),  // CA26 data point
+      Map.entry(6.0, 4200.0),   // Estimated — needs real tuning
+      Map.entry(8.0, 4800.0),   // Estimated — needs real tuning
+      Map.entry(10.0, 5200.0),  // Estimated — needs real tuning
+      Map.entry(12.0, 5500.0)); // Estimated — needs real tuning
 }

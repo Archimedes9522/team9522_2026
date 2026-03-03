@@ -24,6 +24,7 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.vision.VisionIO.PoseObservationType;
 import java.util.LinkedList;
@@ -129,9 +130,12 @@ public class Vision extends SubsystemBase {
     List<Pose3d> allRobotPosesRejected = new LinkedList<>();
 
     // === PROCESS EACH CAMERA ===
+    boolean anyCameraConnected = false;
+    int totalTagsSeen = 0;
     for (int cameraIndex = 0; cameraIndex < io.length; cameraIndex++) {
       // Update the disconnect alert for this camera
       disconnectedAlerts[cameraIndex].set(!inputs[cameraIndex].connected);
+      anyCameraConnected = anyCameraConnected || inputs[cameraIndex].connected;
 
       // Prepare per-camera logging lists
       List<Pose3d> tagPoses = new LinkedList<>();
@@ -146,6 +150,7 @@ public class Vision extends SubsystemBase {
           tagPoses.add(tagPose.get());
         }
       }
+      totalTagsSeen += inputs[cameraIndex].tagIds.length;
 
       // === PROCESS EACH POSE OBSERVATION ===
       for (var observation : inputs[cameraIndex].poseObservations) {
@@ -218,24 +223,26 @@ public class Vision extends SubsystemBase {
             VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev)); // [X, Y, theta] std devs
       }
 
-      // === LOG PER-CAMERA DATA ===
-      // These can be viewed in AdvantageScope for debugging
-      Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/TagPoses",
-          tagPoses.toArray(new Pose3d[tagPoses.size()]));
-      Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPoses",
-          robotPoses.toArray(new Pose3d[robotPoses.size()]));
-      Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPosesAccepted",
-          robotPosesAccepted.toArray(new Pose3d[robotPosesAccepted.size()]));
-      Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPosesRejected",
-          robotPosesRejected.toArray(new Pose3d[robotPosesRejected.size()]));
-      // Log which tag IDs this camera is seeing
-      Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/VisibleTagIds",
-          inputs[cameraIndex].tagIds);
+    // === LOG PER-CAMERA DATA ===
+    // These can be viewed in AdvantageScope for debugging
+    if (kVerboseVisionLogs) {
+    Logger.recordOutput(
+      "Vision/Camera" + Integer.toString(cameraIndex) + "/TagPoses",
+      tagPoses.toArray(new Pose3d[tagPoses.size()]));
+    Logger.recordOutput(
+      "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPoses",
+      robotPoses.toArray(new Pose3d[robotPoses.size()]));
+    Logger.recordOutput(
+      "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPosesAccepted",
+      robotPosesAccepted.toArray(new Pose3d[robotPosesAccepted.size()]));
+    Logger.recordOutput(
+      "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPosesRejected",
+      robotPosesRejected.toArray(new Pose3d[robotPosesRejected.size()]));
+    // Log which tag IDs this camera is seeing
+    Logger.recordOutput(
+      "Vision/Camera" + Integer.toString(cameraIndex) + "/VisibleTagIds",
+      inputs[cameraIndex].tagIds);
+    }
       
       // Add to combined lists
       allTagPoses.addAll(tagPoses);
@@ -244,18 +251,24 @@ public class Vision extends SubsystemBase {
       allRobotPosesRejected.addAll(robotPosesRejected);
     }
 
-    // === LOG COMBINED DATA ===
-    // Summary across all cameras
+  // === LOG COMBINED DATA ===
+  // Summary across all cameras
+  if (kVerboseVisionLogs) {
     Logger.recordOutput(
-        "Vision/Summary/TagPoses", allTagPoses.toArray(new Pose3d[allTagPoses.size()]));
+      "Vision/Summary/TagPoses", allTagPoses.toArray(new Pose3d[allTagPoses.size()]));
     Logger.recordOutput(
-        "Vision/Summary/RobotPoses", allRobotPoses.toArray(new Pose3d[allRobotPoses.size()]));
+      "Vision/Summary/RobotPoses", allRobotPoses.toArray(new Pose3d[allRobotPoses.size()]));
     Logger.recordOutput(
-        "Vision/Summary/RobotPosesAccepted",
-        allRobotPosesAccepted.toArray(new Pose3d[allRobotPosesAccepted.size()]));
+      "Vision/Summary/RobotPosesAccepted",
+      allRobotPosesAccepted.toArray(new Pose3d[allRobotPosesAccepted.size()]));
     Logger.recordOutput(
-        "Vision/Summary/RobotPosesRejected",
-        allRobotPosesRejected.toArray(new Pose3d[allRobotPosesRejected.size()]));
+      "Vision/Summary/RobotPosesRejected",
+      allRobotPosesRejected.toArray(new Pose3d[allRobotPosesRejected.size()]));
+  }
+
+    // === SMARTDASHBOARD STATUS ===
+    SmartDashboard.putBoolean("Vision Connected", anyCameraConnected);
+    SmartDashboard.putNumber("Vision Tags Seen", totalTagsSeen);
   }
 
   /**
