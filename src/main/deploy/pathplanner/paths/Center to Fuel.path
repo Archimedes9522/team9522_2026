@@ -58,13 +58,13 @@
   },
   "goalEndState": {
     "velocity": 0.5,
-    "rotation": 45.0
+    "rotation": -30.0
   },
   "reversed": false,
   "folder": "Pickup",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 180.0
   },
   "useDefaultConstraints": false
 }

@@ -47,7 +47,7 @@
   "rotationTargets": [
     {
       "waypointRelativePos": 1.5,
-      "rotationDegrees": 30.0
+      "rotationDegrees": -150.0
     }
   ],
   "constraintZones": [],
@@ -63,13 +63,13 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 30.0
+    "rotation": -150.0
   },
   "reversed": false,
   "folder": "Pickup",
   "idealStartingState": {
     "velocity": 0.5,
-    "rotation": 30.0
+    "rotation": -30.0
   },
   "useDefaultConstraints": false
 }
