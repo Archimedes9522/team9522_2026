@@ -2,53 +2,36 @@
   "version": "2025.0",
   "waypoints": [
     {
-      "anchor": {
-        "x": 7.5,
-        "y": 2.0
-      },
+      "anchor": { "x": 7.5, "y": 2.0 },
       "prevControl": null,
-      "nextControl": {
-        "x": 5.5,
-        "y": 0.8
-      },
+      "nextControl": { "x": 7.0, "y": 0.8 },
       "isLocked": false,
       "linkedName": "CenterFuelLow"
     },
     {
-      "anchor": {
-        "x": 3.0,
-        "y": 0.8
-      },
-      "prevControl": {
-        "x": 4.0,
-        "y": 0.8
-      },
-      "nextControl": {
-        "x": 2.0,
-        "y": 0.8
-      },
+      "anchor": { "x": 6.0, "y": 0.45 },
+      "prevControl": { "x": 6.5, "y": 0.45 },
+      "nextControl": { "x": 5.0, "y": 0.45 },
       "isLocked": false,
       "linkedName": null
     },
     {
-      "anchor": {
-        "x": 1.5,
-        "y": 2.0
-      },
-      "prevControl": {
-        "x": 1.5,
-        "y": 1.0
-      },
+      "anchor": { "x": 3.0, "y": 0.45 },
+      "prevControl": { "x": 4.0, "y": 0.45 },
+      "nextControl": { "x": 2.0, "y": 0.45 },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": { "x": 1.5, "y": 2.0 },
+      "prevControl": { "x": 1.5, "y": 1.0 },
       "nextControl": null,
       "isLocked": false,
       "linkedName": "ShootLow"
     }
   ],
   "rotationTargets": [
-    {
-      "waypointRelativePos": 1.5,
-      "rotationDegrees": -150.0
-    }
+    { "waypointRelativePos": 2.5, "rotationDegrees": -150.0 }
   ],
   "constraintZones": [],
   "pointTowardsZones": [],
@@ -61,15 +44,9 @@
     "nominalVoltage": 12.0,
     "unlimited": false
   },
-  "goalEndState": {
-    "velocity": 0,
-    "rotation": -150.0
-  },
+  "goalEndState": { "velocity": 0, "rotation": -150.0 },
   "reversed": false,
   "folder": "Pickup",
-  "idealStartingState": {
-    "velocity": 0.5,
-    "rotation": -30.0
-  },
+  "idealStartingState": { "velocity": 0.5, "rotation": -30.0 },
   "useDefaultConstraints": false
 }

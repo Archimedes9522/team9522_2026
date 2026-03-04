@@ -2,53 +2,29 @@
   "version": "2025.0",
   "waypoints": [
     {
-      "anchor": {
-        "x": 1.5,
-        "y": 7.2
-      },
+      "anchor": { "x": 1.5, "y": 7.5 },
       "prevControl": null,
-      "nextControl": {
-        "x": 3.5,
-        "y": 7.2
-      },
+      "nextControl": { "x": 3.5, "y": 7.5 },
       "isLocked": false,
       "linkedName": "StartTop"
     },
     {
-      "anchor": {
-        "x": 5.5,
-        "y": 7.2
-      },
-      "prevControl": {
-        "x": 4.0,
-        "y": 7.2
-      },
-      "nextControl": {
-        "x": 6.5,
-        "y": 7.0
-      },
+      "anchor": { "x": 5.5, "y": 7.5 },
+      "prevControl": { "x": 4.0, "y": 7.5 },
+      "nextControl": { "x": 6.5, "y": 7.3 },
       "isLocked": false,
       "linkedName": null
     },
     {
-      "anchor": {
-        "x": 8.0,
-        "y": 4.0
-      },
-      "prevControl": {
-        "x": 7.5,
-        "y": 5.5
-      },
+      "anchor": { "x": 8.0, "y": 4.0 },
+      "prevControl": { "x": 7.5, "y": 5.5 },
       "nextControl": null,
       "isLocked": false,
       "linkedName": "ShootEnd"
     }
   ],
   "rotationTargets": [
-    {
-      "waypointRelativePos": 1.0,
-      "rotationDegrees": -29.999999999999996
-    }
+    { "waypointRelativePos": 1.0, "rotationDegrees": -30.0 }
   ],
   "constraintZones": [],
   "pointTowardsZones": [],
@@ -61,15 +37,9 @@
     "nominalVoltage": 12.0,
     "unlimited": false
   },
-  "goalEndState": {
-    "velocity": 0,
-    "rotation": -13.162087569788039
-  },
+  "goalEndState": { "velocity": 0, "rotation": -13.162087569788039 },
   "reversed": false,
   "folder": null,
-  "idealStartingState": {
-    "velocity": 0,
-    "rotation": 180.0
-  },
+  "idealStartingState": { "velocity": 0, "rotation": 180.0 },
   "useDefaultConstraints": false
 }
