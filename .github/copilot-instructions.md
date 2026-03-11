@@ -22,7 +22,13 @@ ShootOnTheMoveCommand reads aim point + drivetrain pose/velocity
 
 ## Conventions and patterns
 
-- **Motor controllers**: REV SparkFlex for NEO Vortex, SparkMax for NEO/NEO550. The turret uses SparkFlex + REV Through Bore Encoder (absolute, plugged into the SparkFlex data port, no separate CAN ID). Use DCMotor.getNeoVortex(1) or DCMotor.getNEO(1) in YAMS configs accordingly.
+- **Motor controllers**: REV SparkFlex for NEO Vortex, SparkMax for NEO/NEO550. The turret uses SparkMax + REV Through Bore Encoder (absolute, plugged into the SparkMax data port, no separate CAN ID). Use DCMotor.getNeoVortex(1) or DCMotor.getNEO(1) in YAMS configs accordingly.
+  - Turret: NEO (SparkMax)
+  - Shooter: 2× NEO (SparkMax)
+  - Kicker: NEO (SparkMax)
+  - Intake Pivot: NEO Vortex (SparkFlex)
+  - Intake Roller: NEO Vortex (SparkFlex)
+  - Hopper Indexer: NEO Vortex (SparkFlex)
 - **YAMS for mechanisms**: All mechanisms use YAMS Pivot (positional) or Flywheel (velocity) wrappers with SmartMotorController -> SparkWrapper. See TurretSubsystem for the canonical example.
 - **Hood no-op mode**: HoodConstants.kHasMotor = false makes HoodSubsystem skip all hardware init. getAngle() returns the fixed 55 degree constant, all commands return Commands.none().
 - **AdvantageKit logging**: Robot.java extends LoggedRobot. Use Logger.recordOutput("Subsystem/Key", value) for telemetry. Vision uses the IO-layer pattern (VisionIO interface -> VisionIOPhotonVision / VisionIOPhotonVisionSim).

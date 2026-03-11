@@ -31,12 +31,12 @@
 
 - [x] **Confirm motor types for all mechanisms**  
   All motor types updated:
-  - Turret: NEO Vortex (SparkFlex, `DCMotor.getNeoVortex(1)`)
-  - Shooter: 2× NEO (SparkMax, `DCMotor.getNEO(1)`)
+  - Turret: NEO (SparkMax, `DCMotor.getNEO(1)`)
+  - Shooter: 2× NEO (SparkMax, `DCMotor.getNEO(2)`)
   - Kicker: NEO (SparkMax)
-  - Intake pivot: NEO Vortex recommended (SparkFlex)
-  - Intake rollers: NEO (SparkMax)
-  - Hopper: NEO Vortex recommended (SparkFlex)
+  - Intake pivot: NEO Vortex (SparkFlex, `DCMotor.getNeoVortex(1)`)
+  - Intake rollers: NEO Vortex (SparkFlex, `DCMotor.getNeoVortex(1)`)
+  - Hopper: NEO Vortex (SparkFlex, `DCMotor.getNeoVortex(1)`)
 
 ---
 

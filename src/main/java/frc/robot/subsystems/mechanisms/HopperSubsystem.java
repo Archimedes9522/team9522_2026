@@ -10,7 +10,7 @@ import static edu.wpi.first.units.Units.Pounds;
 import static edu.wpi.first.units.Units.RPM;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkFlex;
 
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -35,14 +35,14 @@ import yams.motorcontrollers.local.SparkWrapper;
  * 
  * <p>Hardware:
  * <ul>
- *   <li>1x NEO motor with 4:1 reduction</li>
+ *   <li>1x NEO Vortex motor (SparkFlex) with 4:1 reduction</li>
  *   <li>No ball sensors installed</li>
  * </ul>
  */
 public class HopperSubsystem extends SubsystemBase {
 
   // === MOTORS ===
-  private final SparkMax hopperMotor;
+  private final SparkFlex hopperMotor;
 
   // === YAMS CONTROLLER ===
   private final SmartMotorController motorController;
@@ -53,7 +53,7 @@ public class HopperSubsystem extends SubsystemBase {
    */
   public HopperSubsystem() {
     // Initialize motor
-    hopperMotor = new SparkMax(HopperConstants.kMotorId, MotorType.kBrushless);
+    hopperMotor = new SparkFlex(HopperConstants.kMotorId, MotorType.kBrushless);
 
     // Configure YAMS SmartMotorController
     SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
@@ -64,7 +64,7 @@ public class HopperSubsystem extends SubsystemBase {
         .withIdleMode(MotorMode.BRAKE)
         .withStatorCurrentLimit(Amps.of(HopperConstants.kCurrentLimitAmps));
 
-    motorController = new SparkWrapper(hopperMotor, DCMotor.getNEO(1), smcConfig);
+    motorController = new SparkWrapper(hopperMotor, DCMotor.getNeoVortex(1), smcConfig);
 
     // Configure YAMS FlyWheel
     FlyWheelConfig hopperConfig = new FlyWheelConfig(motorController)

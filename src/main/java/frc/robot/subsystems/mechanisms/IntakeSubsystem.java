@@ -17,7 +17,7 @@ import static edu.wpi.first.units.Units.Seconds;
 import org.littletonrobotics.junction.Logger;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkFlex;
 
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
@@ -47,8 +47,8 @@ import yams.motorcontrollers.local.SparkWrapper;
  * 
  * <p>Hardware:
  * <ul>
-the *   <li>1x NEO motor for pivot arm (16:1 MAXPlanetary × 60/18 belt = 53.33:1 reduction)</li>
- *   <li>1x NEO motor for rollers (4:1 REV Sport Gearbox)</li>
+the *   <li>1x NEO Vortex motor for pivot arm (SparkFlex, 16:1 MAXPlanetary × 60/18 belt = 53.33:1 reduction)</li>
+ *   <li>1x NEO Vortex motor for rollers (SparkFlex, 4:1 REV Sport Gearbox)</li>
  * </ul>
  */
 public class IntakeSubsystem extends SubsystemBase {
@@ -60,8 +60,8 @@ public class IntakeSubsystem extends SubsystemBase {
   private static final double DEPLOYED_ANGLE = 148;
 
   // === MOTORS ===
-  private final SparkMax pivotMotor;
-  private final SparkMax rollerMotor;
+  private final SparkFlex pivotMotor;
+  private final SparkFlex rollerMotor;
 
   // === YAMS CONTROLLERS ===
   private final SmartMotorController pivotController;
@@ -74,8 +74,8 @@ public class IntakeSubsystem extends SubsystemBase {
    */
   public IntakeSubsystem() {
     // Initialize motors
-    pivotMotor = new SparkMax(IntakeConstants.kPivotMotorId, MotorType.kBrushless);
-    rollerMotor = new SparkMax(IntakeConstants.kRollerMotorId, MotorType.kBrushless);
+    pivotMotor = new SparkFlex(IntakeConstants.kPivotMotorId, MotorType.kBrushless);
+    rollerMotor = new SparkFlex(IntakeConstants.kRollerMotorId, MotorType.kBrushless);
 
     // === ROLLER CONFIGURATION ===
     SmartMotorControllerConfig rollerConfig = new SmartMotorControllerConfig(this)
@@ -86,7 +86,7 @@ public class IntakeSubsystem extends SubsystemBase {
         .withIdleMode(MotorMode.COAST)
         .withStatorCurrentLimit(Amps.of(IntakeConstants.kRollerCurrentLimitAmps));
 
-    rollerController = new SparkWrapper(rollerMotor, DCMotor.getNEO(1), rollerConfig);
+    rollerController = new SparkWrapper(rollerMotor, DCMotor.getNeoVortex(1), rollerConfig);
 
     FlyWheelConfig rollerFlyWheelConfig = new FlyWheelConfig(rollerController)
         .withDiameter(Inches.of(4))
@@ -114,7 +114,7 @@ public class IntakeSubsystem extends SubsystemBase {
         .withClosedLoopRampRate(Seconds.of(0.1))
         .withOpenLoopRampRate(Seconds.of(0.1));
 
-    pivotController = new SparkWrapper(pivotMotor, DCMotor.getNEO(1), pivotConfig);
+    pivotController = new SparkWrapper(pivotMotor, DCMotor.getNeoVortex(1), pivotConfig);
 
     ArmConfig armConfig = new ArmConfig(pivotController)
         .withSoftLimits(Degrees.of(0), Degrees.of(150))

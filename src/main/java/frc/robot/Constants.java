@@ -285,15 +285,15 @@ public final class Constants {
    * Turret mechanism constants.
    * 
    * <p>The turret rotates the shooter ±90° to aim at the hub.
-   * Uses a NEO Vortex motor with a 40:1 reduction (4:1 REV Sport Gearbox + 200:20 gear).
-   * REV Through Bore Encoder plugs directly into the SparkFlex data port.
+   * Uses a NEO motor with a 40:1 reduction (4:1 REV Sport Gearbox + 200:20 gear).
+   * REV Through Bore Encoder plugs directly into the SparkMax data port.
    */
   public static final class TurretConstants {
-    /** CAN ID for the turret motor (NEO Vortex) */
+    /** CAN ID for the turret motor (NEO) */
     public static final int kMotorId = 17;
     
     // NOTE: kEncoderId is no longer needed - REV Through Bore Encoder
-    // plugs directly into the SparkFlex data port (no CAN ID required)
+    // plugs directly into the SparkMax data port (no CAN ID required)
     
     /** Total gear reduction from motor to turret output */
     public static final double kGearRatio = 40.0;
