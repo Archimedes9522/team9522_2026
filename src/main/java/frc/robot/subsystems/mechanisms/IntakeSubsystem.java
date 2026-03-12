@@ -54,10 +54,10 @@ the *   <li>1x NEO Vortex motor for pivot arm (SparkFlex, 16:1 MAXPlanetary × 6
 public class IntakeSubsystem extends SubsystemBase {
 
   // === PIVOT POSITIONS (degrees) ===
-  private static final double STOW_ANGLE = 0;
+  private static final double STOW_ANGLE = IntakeConstants.kStowedAngleDegrees;
   private static final double FEED_ANGLE = 59;
   private static final double HOLD_ANGLE = 115;
-  private static final double DEPLOYED_ANGLE = 148;
+  private static final double DEPLOYED_ANGLE = IntakeConstants.kDeployedAngleDegrees;
 
   // === MOTORS ===
   private final SparkFlex pivotMotor;

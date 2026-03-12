@@ -198,15 +198,18 @@ public class Superstructure extends SubsystemBase {
   // ==================== TURRET PRESETS ====================
 
   public Command setTurretForward() {
-    return turret.setAngle(Degrees.of(0)).withName("Superstructure.setTurretForward");
+    return turret.setAngle(Degrees.of(0 + Constants.TurretConstants.kOperatorPresetOffsetDegrees))
+        .withName("Superstructure.setTurretForward");
   }
 
   public Command setTurretLeft() {
-    return turret.setAngle(Degrees.of(45)).withName("Superstructure.setTurretLeft");
+    return turret.setAngle(Degrees.of(45 + Constants.TurretConstants.kOperatorPresetOffsetDegrees))
+        .withName("Superstructure.setTurretLeft");
   }
 
   public Command setTurretRight() {
-    return turret.setAngle(Degrees.of(-45)).withName("Superstructure.setTurretRight");
+    return turret.setAngle(Degrees.of(-45 + Constants.TurretConstants.kOperatorPresetOffsetDegrees))
+        .withName("Superstructure.setTurretRight");
   }
 
   // ==================== SHOOTING COMMANDS ====================
@@ -222,7 +225,7 @@ public class Superstructure extends SubsystemBase {
    * Stops the shooter.
    */
   public Command stopShootingCommand() {
-    return shooter.stop().withName("Superstructure.stopShooting");
+    return shooter.coast().withName("Superstructure.stopShooting");
   }
 
   /**

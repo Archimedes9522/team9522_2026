@@ -32,6 +32,7 @@ import frc.robot.subsystems.mechanisms.Superstructure;
  *   <li>D-Pad Up: Turret forward</li>
  *   <li>D-Pad Left: Turret left (+45°)</li>
  *   <li>D-Pad Right: Turret right (-45°)</li>
+ *   <li>D-Pad Down: Stow intake</li>
  *   <li>Start: Re-zero intake pivot and turret</li>
  * </ul>
  */
@@ -116,6 +117,11 @@ public class OperatorControls {
     controller.povRight()
         .onTrue(superstructure.setTurretRight()
             .withName("OperatorControls.setTurretRight"));
+    
+    // D-Pad Down: Stow intake
+    controller.povDown()
+        .onTrue(superstructure.intake.stow().asProxy()
+            .withName("OperatorControls.stowIntake"));
     
     // ==================== AUTO-AIM ====================
     

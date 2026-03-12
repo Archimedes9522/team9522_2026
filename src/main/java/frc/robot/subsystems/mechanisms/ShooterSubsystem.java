@@ -29,6 +29,7 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ShooterConstants;
 import yams.gearing.GearBox;
@@ -159,6 +160,17 @@ public class ShooterSubsystem extends SubsystemBase {
    */
   public Command stop() {
     return setSpeed(RPM.of(0));
+  }
+  
+  /**
+   * Coasts the shooter by setting 0% duty cycle.
+   * This allows natural deceleration instead of active braking to 0 RPM.
+   * 
+   * @return Command that coasts the flywheel
+   */
+  public Command coast() {
+    return Commands.runOnce(() -> motorController.setDutyCycle(0), this)
+        .withName("Shooter.Coast");
   }
 
   /**
