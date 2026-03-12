@@ -4,6 +4,7 @@
 
 package frc.robot.controls;
 
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.ShootOnTheMoveCommand;
 import frc.robot.subsystems.drive.SwerveSubsystem;
@@ -90,11 +91,13 @@ public class OperatorControls {
     // A Button: Feed all (run hopper and kicker forward)
     controller.a()
         .whileTrue(superstructure.feedAllCommand()
+            .finallyDo(() -> CommandScheduler.getInstance().schedule(superstructure.stopFeedingAllCommand()))
             .withName("OperatorControls.feedAll"));
     
     // B Button: Back feed (reverse hopper and kicker to clear jams)
     controller.b()
         .whileTrue(superstructure.backFeedAllCommand()
+            .finallyDo(() -> CommandScheduler.getInstance().schedule(superstructure.stopFeedingAllCommand()))
             .withName("OperatorControls.backFeed"));
     
     // ==================== TURRET CONTROLS ====================
