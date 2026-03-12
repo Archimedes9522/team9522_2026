@@ -77,23 +77,18 @@ public class VisionConstants {
   /**
    * Primary camera (Rubik Pi 3) - Back-left, facing backward, tilted UP.
    * 
-   * Mounting position based on CranberryAlarm (CA26) robot:
-   * - Located at back-left corner of robot
-   * - Facing backward (away from front of robot)
-   * - Tilted UP 21° to see elevated AprilTags on hub/scoring structures
-   * 
-   * This position is ideal for:
-   * - Seeing AprilTags when backing up to score
-   * - Viewing elevated field elements (hub, etc.)
-   * - Keeping camera out of the way of front mechanisms
-   * 
-   * MEASURE THESE VALUES ON YOUR ROBOT AND UPDATE IF DIFFERENT!
+   * Mounting position (measured on 9522 robot):
+   * - X: -9.464 in (behind robot center)
+   * - Y: +12.855 in (left of center)
+   * - Z: 11.919 in (above floor)
+   * - Pitch: +21° (tilted up to see elevated AprilTags)
+   * - Yaw: π (180°, facing backward)
    */
   public static Transform3d robotToCamera0 =
       new Transform3d(
-          Units.inchesToMeters(-11),  // X: 11 inches behind robot center
-          Units.inchesToMeters(9),    // Y: 9 inches LEFT of center (positive = left)
-          Units.inchesToMeters(12.75),// Z: 12.75 inches up from floor
+          Units.inchesToMeters(-9.464),   // X: 9.464 inches behind robot center
+          Units.inchesToMeters(12.855),   // Y: 12.855 inches LEFT of center (positive = left)
+          Units.inchesToMeters(11.919),   // Z: 11.919 inches up from floor
           new Rotation3d(
               0.0,                              // Roll: 0 (camera is level side-to-side)
               Units.degreesToRadians(21),       // Pitch: +21° (tilted UP 21 degrees)
