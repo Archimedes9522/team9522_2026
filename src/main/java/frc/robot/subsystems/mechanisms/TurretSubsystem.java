@@ -19,7 +19,11 @@ import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.FeedbackSensor;
+import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -47,21 +51,19 @@ import yams.motorcontrollers.local.SparkWrapper;
 
 /**
  * Turret subsystem using YAMS Pivot for position control.
- * 
+ *
  * <p>The turret rotates the shooter to aim at the hub.
  * Has a ±90° field of view for targeting flexibility.
- * 
+ *
  * <p>Hardware:
  * <ul>
  *   <li>1x NEO motor (SparkMax)</li>
- *   <li>1x REV Through Bore Encoder for absolute position sensing (plugged into SparkMax data port)</li>
  *   <li>40:1 gear reduction (4:1 REV Sport Gearbox × 200:20 gear transmission)</li>
- *   <li>Through Bore on 1:10 overdrive from pinion = 1:1 with turret rotation</li>
  *   <li>Non-continuous rotation (limited travel)</li>
  * </ul>
- * 
- * <p>The REV Through Bore Encoder provides absolute position so the turret knows its true
- * position on startup without needing to be homed/zeroed.
+ *
+ * <p>Position is tracked via the NEO's internal encoder. Use the rezero command
+ * (Start button) when the turret is physically centered before a match.
  */
 public class TurretSubsystem extends SubsystemBase {
 
@@ -85,32 +87,36 @@ public class TurretSubsystem extends SubsystemBase {
     // Initialize motor (NEO uses SparkMax)
     spark = new SparkMax(TurretConstants.kMotorId, MotorType.kBrushless);
 
-    // Configure YAMS SmartMotorController
-    // CA26 uses: P=15, I=0, D=0, velocity=2440, accel=2440, ramp=0.1, kV=7.5
+    // Explicitly set feedback sensor to the internal motor encoder.
+    // If a Through Bore Encoder is plugged into the data port, the SparkMax
+    // may default to using it for PID feedback — which causes oscillation
+    // because of the 10:1 gearing mismatch.
+    SparkMaxConfig sparkConfig = new SparkMaxConfig();
+    sparkConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
+    spark.configure(sparkConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+    // Configure YAMS SmartMotorController — all values matching CA26
     SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
-      .withControlMode(ControlMode.CLOSED_LOOP)
-      .withClosedLoopController(
-        TurretConstants.kP,  // P for tracking
-        TurretConstants.kI,  // I=0.0
-        TurretConstants.kD,  // D for damping
-        DegreesPerSecond.of(2440),  // Max velocity - matching CA26
-        DegreesPerSecondPerSecond.of(2440))  // Max acceleration - matching CA26
-          .withFeedforward(new SimpleMotorFeedforward(0, 7.5, 0))  // kV=7.5 matching CA26
-          .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
-          .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
-          .withMotorInverted(true)
-          .withIdleMode(MotorMode.COAST)  // CA26 uses COAST
-          .withSoftLimit(Degrees.of(-MAX_ONE_DIR_FOV), Degrees.of(MAX_ONE_DIR_FOV))
-          .withStatorCurrentLimit(Amps.of(10))  // Matching CA26
-          .withClosedLoopRampRate(Seconds.of(0.1))  // Matching CA26
-          .withOpenLoopRampRate(Seconds.of(0.1));
+        .withControlMode(ControlMode.CLOSED_LOOP)
+        .withClosedLoopController(
+            TurretConstants.kP,
+            TurretConstants.kI,
+            TurretConstants.kD,
+            DegreesPerSecond.of(TurretConstants.kMaxVelocityDegPerSec),
+            DegreesPerSecondPerSecond.of(TurretConstants.kMaxAccelDegPerSecSq))
+        .withFeedforward(new SimpleMotorFeedforward(0, TurretConstants.kV, 0))
+        .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
+        .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
+        .withMotorInverted(true)
+        .withIdleMode(MotorMode.COAST)
+        .withSoftLimit(Degrees.of(-MAX_ONE_DIR_FOV), Degrees.of(MAX_ONE_DIR_FOV))
+        .withStatorCurrentLimit(Amps.of(TurretConstants.kCurrentLimitAmps))
+        .withClosedLoopRampRate(Seconds.of(0.1))
+        .withOpenLoopRampRate(Seconds.of(0.1));
 
     motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
 
-    // CA26 approach: always start at 0° and use rezero when physically centered.
-    // The Through Bore Encoder is geared 10:1 (on the 20-tooth pinion), so it
-    // wraps multiple times within ±90° travel — not usable for absolute positioning.
-    // Use Start button (rezero) when turret is physically centered before a match.
+    // Always start at 0° and use rezero (Start button) when physically centered.
     PivotConfig turretConfig = new PivotConfig(motorController)
         .withHardLimit(Degrees.of(-MAX_ONE_DIR_FOV - 5), Degrees.of(MAX_ONE_DIR_FOV + 5))
         .withStartingPosition(Degrees.of(0))
@@ -133,8 +139,8 @@ public class TurretSubsystem extends SubsystemBase {
    * <p>This method directly controls the motor without creating a command,
    * so it can be called from within another command's execute() method.
    * 
-  * @param angle Target angle (0 = turret forward, positive = left, negative = right)
-  *              Note: turret forward points toward the robot rear due to backwards mounting.
+   * @param angle Target angle (0 = turret forward, positive = left, negative = right)
+   *              Note: turret forward points toward the robot rear due to backwards mounting.
    */
   public void setTargetAngle(Angle angle) {
     // Clamp to soft limits

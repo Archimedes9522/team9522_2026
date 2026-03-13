@@ -198,17 +198,23 @@ public class Superstructure extends SubsystemBase {
   // ==================== TURRET PRESETS ====================
 
   public Command setTurretForward() {
-    return turret.setAngle(Degrees.of(0 + Constants.TurretConstants.kOperatorPresetOffsetDegrees))
+    Angle target = Degrees.of(0 + Constants.TurretConstants.kOperatorPresetOffsetDegrees);
+    return Commands.runOnce(() -> targetTurretAngle = target)
+        .andThen(turret.setAngle(target))
         .withName("Superstructure.setTurretForward");
   }
 
   public Command setTurretLeft() {
-    return turret.setAngle(Degrees.of(45 + Constants.TurretConstants.kOperatorPresetOffsetDegrees))
+    Angle target = Degrees.of(45 + Constants.TurretConstants.kOperatorPresetOffsetDegrees);
+    return Commands.runOnce(() -> targetTurretAngle = target)
+        .andThen(turret.setAngle(target))
         .withName("Superstructure.setTurretLeft");
   }
 
   public Command setTurretRight() {
-    return turret.setAngle(Degrees.of(-45 + Constants.TurretConstants.kOperatorPresetOffsetDegrees))
+    Angle target = Degrees.of(-45 + Constants.TurretConstants.kOperatorPresetOffsetDegrees);
+    return Commands.runOnce(() -> targetTurretAngle = target)
+        .andThen(turret.setAngle(target))
         .withName("Superstructure.setTurretRight");
   }
 

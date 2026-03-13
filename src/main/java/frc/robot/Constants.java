@@ -283,42 +283,44 @@ public final class Constants {
 
   /**
    * Turret mechanism constants.
-   * 
+   *
    * <p>The turret rotates the shooter ±90° to aim at the hub.
    * Uses a NEO motor with a 40:1 reduction (4:1 REV Sport Gearbox + 200:20 gear).
-   * REV Through Bore Encoder plugs directly into the SparkMax data port.
+   * Position is tracked via the NEO's internal encoder; use rezero when centered.
    */
   public static final class TurretConstants {
     /** CAN ID for the turret motor (NEO) */
     public static final int kMotorId = 17;
-    
-    // NOTE: kEncoderId is no longer needed - REV Through Bore Encoder
-    // plugs directly into the SparkMax data port (no CAN ID required)
-    
+
     /** Total gear reduction from motor to turret output */
     public static final double kGearRatio = 40.0;
-    
+
     /** Soft limit for turret rotation in degrees (positive = clockwise) */
     public static final double kMaxAngleDegrees = 90.0;
-    
+
     /** Soft limit for turret rotation in degrees (negative = counter-clockwise) */
     public static final double kMinAngleDegrees = -90.0;
 
-  /**
-   * Operator preset offset for turret angles (degrees).
-   * Use this to align D-pad presets with mounting orientation.
-   */
-  public static final double kOperatorPresetOffsetDegrees = 0.0;
-    
-    /** Motor current limit in amps */
-    public static final int kCurrentLimitAmps = 30;
-    
-    // PID gains for position control
-    // NOTE: These are tuned for simulation - real robot may need different values
-    // TUNING: Increase kP for faster response, decrease if oscillating
-    public static final double kP = 10.0;  // Matching CA26 reference value; tune up slowly if too slow
-    public static final double kI = 0.0;   // Keep at 0 to prevent windup
-    public static final double kD = 0.5;   // CA26 uses no D term
+    /**
+     * Operator preset offset for turret angles (degrees).
+     * Use this to align D-pad presets with mounting orientation.
+     */
+    public static final double kOperatorPresetOffsetDegrees = 0.0;
+
+    /** Motor current limit in amps — matching CA26 */
+    public static final int kCurrentLimitAmps = 10;
+
+    /** Motion profile limits — matching CA26 */
+    public static final double kMaxVelocityDegPerSec = 2440.0;
+    public static final double kMaxAccelDegPerSecSq = 2440.0;
+
+    // PID gains for position control — matching CA26
+    public static final double kP = 15.0;
+    public static final double kI = 0.0;
+    public static final double kD = 0.0;
+
+    /** Feedforward velocity gain — matching CA26 */
+    public static final double kV = 7.5;
   }
 
   /**
@@ -367,46 +369,68 @@ public final class Constants {
 
   /**
    * Intake mechanism constants.
-   * 
+   *
    * <p>The intake has a pivot arm and rollers to collect FUEL from the floor.
    * <ul>
    *   <li>Rollers: 4:1 REV Sport Gearbox + 1:1 belt = 4:1 total</li>
-   *   <li>Pivot: 16:1 MAXPlanetary + 60:18 belt = 53.33:1 total</li>
+   *   <li>Pivot: 5:1 × 5:1 MAXPlanetary + 60:18 belt = 83.33:1 total</li>
    * </ul>
    */
   public static final class IntakeConstants {
     /** CAN ID for the intake pivot motor */
     public static final int kPivotMotorId = 20;
-    
+
     /** CAN ID for the intake roller motor */
     public static final int kRollerMotorId = 21;
-    
+
     /** Roller gear reduction: 4:1 REV Sport Gearbox + 1:1 belt */
     public static final double kRollerGearRatio = 4.0;
-    
-    /** Pivot gear reduction: 16:1 MAXPlanetary + 60:18 belt = 53.33:1 */
-    public static final double kPivotGearRatio = 16.0 * (60.0 / 18.0); // 53.33:1
-    
-  /** Deployed angle in degrees (down to ground) - measured target */
-  public static final double kDeployedAngleDegrees = 225.0;
-    
+
+    /** Pivot gear reduction: 5:1 × 5:1 MAXPlanetary + 60:18 belt = 83.33:1 */
+    public static final double kPivotGearRatio = 5.0 * 5.0 * (60.0 / 18.0); // 83.33:1
+
+    /** Deployed angle in degrees (down to ground) — matching CA26 */
+    public static final double kDeployedAngleDegrees = 148.0;
+
+    /** Pivot soft limit minimum (degrees) */
+    public static final double kPivotSoftMinAngleDeg = 0.0;
+
+    /** Pivot soft limit maximum (degrees) */
+    public static final double kPivotSoftMaxAngleDeg = 148.0;
+
+    /** Pivot hard limit minimum (degrees) */
+    public static final double kPivotHardMinAngleDeg = 0.0;
+
+    /** Pivot hard limit maximum (degrees) */
+    public static final double kPivotHardMaxAngleDeg = 153.0;
+
     /** Stowed angle in degrees (inside frame perimeter) */
     public static final double kStowedAngleDegrees = 0.0;
-    
+
     /** Roller intake speed (duty cycle, -1 to 1) */
-    public static final double kIntakeSpeed = 1.0;  // Increased to full speed to prevent fuel jamming
-    
+    public static final double kIntakeSpeed = 1.0;
+
     /** Roller outtake speed (duty cycle, -1 to 1) */
     public static final double kOuttakeSpeed = -0.5;
+
+    /** Motor current limits in amps — matching CA26 */
+    public static final int kPivotCurrentLimitAmps = 10;
+    public static final int kRollerCurrentLimitAmps = 40;
     
-    /** Motor current limits in amps */
-    public static final int kPivotCurrentLimitAmps = 30;
-    public static final int kRollerCurrentLimitAmps = 25;
-    
-    // PID gains for pivot position control
-    public static final double kPivotP = 0.1;
+    // PID gains — matching CA26
+    public static final double kPivotP = 25.0;
     public static final double kPivotI = 0.0;
     public static final double kPivotD = 0.0;
+
+    /** Motion profile limits — matching CA26 */
+    public static final double kPivotMaxVelocityDegPerSec = 360.0;
+    public static final double kPivotMaxAccelDegPerSec2 = 360.0;
+
+    /** Closed-loop ramp — matching CA26 */
+    public static final double kPivotClosedLoopRampSec = 0.1;
+
+    /** Feedforward kV — matching CA26 SimpleMotorFeedforward(0, 10, 0) */
+    public static final double kPivotKv = 10.0;
   }
 
   /**
@@ -431,8 +455,8 @@ public final class Constants {
     /** Feed speed (duty cycle, -1 to 1) */
     public static final double kFeedSpeed = 1;  // Increased from 0.6 to reduce jamming
     
-    /** Reverse speed for unjamming (duty cycle, -1 to 1) */
-    public static final double kReverseSpeed = -0.6;
+    /** Reverse speed for unjamming (duty cycle, -1 to 1) — matching CA26 */
+    public static final double kReverseSpeed = -1.0;
     
     /** Motor current limit in amps */
     public static final int kCurrentLimitAmps = 40;  // Increased from 20A to match CA26 — low limit was causing stalls under load

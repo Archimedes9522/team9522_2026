@@ -41,13 +41,13 @@ import yams.motorcontrollers.local.SparkWrapper;
 
 /**
  * Intake subsystem with pivot arm and rollers.
- * 
+ *
  * <p>The intake deploys to the ground to collect FUEL balls,
  * then stows inside the frame perimeter for transport.
- * 
+ *
  * <p>Hardware:
  * <ul>
-the *   <li>1x NEO Vortex motor for pivot arm (SparkFlex, 16:1 MAXPlanetary × 60/18 belt = 53.33:1 reduction)</li>
+ *   <li>1x NEO Vortex motor for pivot arm (SparkFlex, 5:1 × 5:1 MAXPlanetary × 60/18 belt = 83.33:1 reduction)</li>
  *   <li>1x NEO Vortex motor for rollers (SparkFlex, 4:1 REV Sport Gearbox)</li>
  * </ul>
  */
@@ -81,7 +81,7 @@ public class IntakeSubsystem extends SubsystemBase {
     SmartMotorControllerConfig rollerConfig = new SmartMotorControllerConfig(this)
         .withControlMode(ControlMode.OPEN_LOOP)
         .withTelemetry("IntakeRollerMotor", TelemetryVerbosity.HIGH)
-  .withGearing(new MechanismGearing(GearBox.fromReductionStages(IntakeConstants.kRollerGearRatio)))
+        .withGearing(new MechanismGearing(GearBox.fromReductionStages(IntakeConstants.kRollerGearRatio)))
         .withMotorInverted(true)
         .withIdleMode(MotorMode.COAST)
         .withStatorCurrentLimit(Amps.of(IntakeConstants.kRollerCurrentLimitAmps));
@@ -101,24 +101,32 @@ public class IntakeSubsystem extends SubsystemBase {
     SmartMotorControllerConfig pivotConfig = new SmartMotorControllerConfig(this)
         .withControlMode(ControlMode.CLOSED_LOOP)
         .withClosedLoopController(
-            25, 0, 0,
-            DegreesPerSecond.of(360),
-            DegreesPerSecondPerSecond.of(360))
-        .withFeedforward(new SimpleMotorFeedforward(0, 10, 0))
+            IntakeConstants.kPivotP,
+            IntakeConstants.kPivotI,
+            IntakeConstants.kPivotD,
+            DegreesPerSecond.of(IntakeConstants.kPivotMaxVelocityDegPerSec),
+            DegreesPerSecondPerSecond.of(IntakeConstants.kPivotMaxAccelDegPerSec2))
+        .withFeedforward(new SimpleMotorFeedforward(0, IntakeConstants.kPivotKv, 0))
         .withTelemetry("IntakePivotMotor", TelemetryVerbosity.HIGH)
-  .withGearing(new MechanismGearing(GearBox.fromReductionStages(IntakeConstants.kPivotGearRatio)))
-        .withMotorInverted(false)  // Matching CA26 — false is correct direction
+        .withGearing(new MechanismGearing(GearBox.fromReductionStages(IntakeConstants.kPivotGearRatio)))
+        .withMotorInverted(false)
         .withIdleMode(MotorMode.COAST)
-  .withSoftLimit(Degrees.of(0), Degrees.of(235))
-        .withStatorCurrentLimit(Amps.of(30))
-        .withClosedLoopRampRate(Seconds.of(0.1))
+        .withSoftLimit(
+            Degrees.of(IntakeConstants.kPivotSoftMinAngleDeg),
+            Degrees.of(IntakeConstants.kPivotSoftMaxAngleDeg))
+        .withStatorCurrentLimit(Amps.of(IntakeConstants.kPivotCurrentLimitAmps))
+        .withClosedLoopRampRate(Seconds.of(IntakeConstants.kPivotClosedLoopRampSec))
         .withOpenLoopRampRate(Seconds.of(0.1));
 
     pivotController = new SparkWrapper(pivotMotor, DCMotor.getNeoVortex(1), pivotConfig);
 
     ArmConfig armConfig = new ArmConfig(pivotController)
-  .withSoftLimits(Degrees.of(0), Degrees.of(235))
-  .withHardLimit(Degrees.of(0), Degrees.of(240))
+        .withSoftLimits(
+            Degrees.of(IntakeConstants.kPivotSoftMinAngleDeg),
+            Degrees.of(IntakeConstants.kPivotSoftMaxAngleDeg))
+        .withHardLimit(
+            Degrees.of(IntakeConstants.kPivotHardMinAngleDeg),
+            Degrees.of(IntakeConstants.kPivotHardMaxAngleDeg))
         .withStartingPosition(Degrees.of(0))
         .withLength(Feet.of(1))
         .withMass(Pounds.of(2))
@@ -213,7 +221,7 @@ public class IntakeSubsystem extends SubsystemBase {
       rollerController.setDutyCycle(IntakeConstants.kIntakeSpeed);
     }, this).finallyDo(() -> {
       rollerController.setDutyCycle(0);
-      pivotController.setPosition(Degrees.of(HOLD_ANGLE));
+      pivotController.setPosition(Degrees.of(HOLD_ANGLE));  // CA26: return to hold (115°), not stow
     }).withName("Intake.DeployAndRoll");
   }
 
@@ -228,7 +236,7 @@ public class IntakeSubsystem extends SubsystemBase {
       rollerController.setDutyCycle(IntakeConstants.kOuttakeSpeed);
     }, this).finallyDo(() -> {
       rollerController.setDutyCycle(0);
-      pivotController.setPosition(Degrees.of(HOLD_ANGLE));
+      pivotController.setPosition(Degrees.of(HOLD_ANGLE));  // CA26: return to hold (115°), not stow
     }).withName("Intake.DeployAndEject");
   }
 

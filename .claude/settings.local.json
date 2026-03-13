@@ -3,7 +3,12 @@
     "allow": [
       "Bash(xargs grep -l \"getTurretAngle\\\\|setTurretAngle\")",
       "Bash(./gradlew compileJava)",
-      "Bash(ls gradlew*)"
+      "Bash(ls gradlew*)",
+      "Bash(jar tf /c/Users/Owner/.gradle/caches/modules-2/files-2.1/com.revrobotics.frc/REVLib-java/2026.0.3/3efcb7bbb8c9e1e54e9a64b81a7291ed231e876d/REVLib-java-2026.0.3.jar)",
+      "Bash(python3 -c \"import zipfile; z=zipfile.ZipFile\\(''C:/Users/Owner/.gradle/caches/modules-2/files-2.1/com.revrobotics.frc/REVLib-java/2026.0.3/3efcb7bbb8c9e1e54e9a64b81a7291ed231e876d/REVLib-java-2026.0.3.jar''\\); [print\\(n\\) for n in z.namelist\\(\\) if ''ClosedLoop'' in n or ''FeedbackSensor'' in n]\")",
+      "Bash(python3 -c \":*)",
+      "Bash(./gradlew build)",
+      "Bash(JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\" PATH=\"C:/Users/Public/wpilib/2026/jdk/bin:$PATH\" ./gradlew build)"
     ]
   }
 }
