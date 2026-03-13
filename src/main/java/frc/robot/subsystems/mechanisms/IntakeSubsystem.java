@@ -107,18 +107,18 @@ public class IntakeSubsystem extends SubsystemBase {
         .withFeedforward(new SimpleMotorFeedforward(0, 10, 0))
         .withTelemetry("IntakePivotMotor", TelemetryVerbosity.HIGH)
   .withGearing(new MechanismGearing(GearBox.fromReductionStages(IntakeConstants.kPivotGearRatio)))
-        .withMotorInverted(false)
+        .withMotorInverted(false)  // Matching CA26 — false is correct direction
         .withIdleMode(MotorMode.COAST)
-        .withSoftLimit(Degrees.of(0), Degrees.of(150))
-        .withStatorCurrentLimit(Amps.of(IntakeConstants.kPivotCurrentLimitAmps))
+  .withSoftLimit(Degrees.of(0), Degrees.of(235))
+        .withStatorCurrentLimit(Amps.of(30))
         .withClosedLoopRampRate(Seconds.of(0.1))
         .withOpenLoopRampRate(Seconds.of(0.1));
 
     pivotController = new SparkWrapper(pivotMotor, DCMotor.getNeoVortex(1), pivotConfig);
 
     ArmConfig armConfig = new ArmConfig(pivotController)
-        .withSoftLimits(Degrees.of(0), Degrees.of(150))
-        .withHardLimit(Degrees.of(0), Degrees.of(155))
+  .withSoftLimits(Degrees.of(0), Degrees.of(235))
+  .withHardLimit(Degrees.of(0), Degrees.of(240))
         .withStartingPosition(Degrees.of(0))
         .withLength(Feet.of(1))
         .withMass(Pounds.of(2))

@@ -316,9 +316,9 @@ public final class Constants {
     // PID gains for position control
     // NOTE: These are tuned for simulation - real robot may need different values
     // TUNING: Increase kP for faster response, decrease if oscillating
-    public static final double kP = 75.0;  // Increased for faster 45° movements with 40:1 gearing
+    public static final double kP = 10.0;  // Matching CA26 reference value; tune up slowly if too slow
     public static final double kI = 0.0;   // Keep at 0 to prevent windup
-    public static final double kD = 1.0;   // Increased damping to prevent oscillation
+    public static final double kD = 0.5;   // CA26 uses no D term
   }
 
   /**
@@ -387,8 +387,8 @@ public final class Constants {
     /** Pivot gear reduction: 16:1 MAXPlanetary + 60:18 belt = 53.33:1 */
     public static final double kPivotGearRatio = 16.0 * (60.0 / 18.0); // 53.33:1
     
-    /** Deployed angle in degrees (down to ground) - increased for better ground contact */
-    public static final double kDeployedAngleDegrees = 160.0;
+  /** Deployed angle in degrees (down to ground) - measured target */
+  public static final double kDeployedAngleDegrees = 225.0;
     
     /** Stowed angle in degrees (inside frame perimeter) */
     public static final double kStowedAngleDegrees = 0.0;
@@ -429,13 +429,13 @@ public final class Constants {
     public static final int kExitBeamBreakPort = 1;
     
     /** Feed speed (duty cycle, -1 to 1) */
-    public static final double kFeedSpeed = 0.6;
+    public static final double kFeedSpeed = 1;  // Increased from 0.6 to reduce jamming
     
     /** Reverse speed for unjamming (duty cycle, -1 to 1) */
-    public static final double kReverseSpeed = -0.4;
+    public static final double kReverseSpeed = -0.6;
     
     /** Motor current limit in amps */
-    public static final int kCurrentLimitAmps = 20;
+    public static final int kCurrentLimitAmps = 40;  // Increased from 20A to match CA26 — low limit was causing stalls under load
   }
 
   /**
