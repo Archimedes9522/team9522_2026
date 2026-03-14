@@ -322,16 +322,23 @@ public final class Constants {
     public static final double kMaxAccelDegPerSecSq = 500.0;
 
     // PID gains for position control
-    public static final double kP = 10.0;
+    // SysId position loop: kP=5.9001, kD=827.02
+    // kD=827 is for a continuous-time LQR and would saturate the motor instantly in YAMS.
+    // Critical damping estimate: 2*sqrt(kP*kA) = 2*sqrt(5.9*0.673) ≈ 4.0 — start there.
+    public static final double kP = 5.9;
     public static final double kI = 0.0;
-    public static final double kD = 0.0;
+    public static final double kD = 4.0;
 
-    // Feedforward gains (YAMS passes mechanism rev/s to SimpleMotorFeedforward)
-    // NEO free speed through 40:1 = 2.365 rev/s → theoretical kV = 12V / 2.365 = 5.07
-    /** Static friction compensation voltage */
-    public static final double kS = 0.025;
+    // Feedforward gains from SysId (YAMS passes mechanism rev/s to SimpleMotorFeedforward)
+    /** Static friction compensation voltage — measured 0.62V, much higher than estimated */
+    public static final double kS = 0.61972;
     /** Velocity feedforward (V per mechanism rev/s) */
-    public static final double kV = 5.0;
+    public static final double kV = 3.364;
+    /** Acceleration feedforward (V per mechanism rev/s²) */
+    public static final double kA = 0.67293;
+    /** Gravity compensation from SysId — turret is horizontal so this is NOT used.
+     *  If turret drifts consistently to one side, add this as a constant voltage offset. */
+    public static final double kG = 0.30435;
   }
 
   /**

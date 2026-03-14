@@ -103,7 +103,7 @@ public class TurretSubsystem extends SubsystemBase {
             TurretConstants.kD,
             DegreesPerSecond.of(TurretConstants.kMaxVelocityDegPerSec),
             DegreesPerSecondPerSecond.of(TurretConstants.kMaxAccelDegPerSecSq))
-        .withFeedforward(new SimpleMotorFeedforward(TurretConstants.kS, TurretConstants.kV, 0))
+        .withFeedforward(new SimpleMotorFeedforward(TurretConstants.kS, TurretConstants.kV, TurretConstants.kA))
         .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
   .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
   .withMotorInverted(true)
