@@ -432,7 +432,7 @@ public final class Constants {
     // PID gains for pivot position control
     public static final double kPivotP = 30.0;
     public static final double kPivotI = 0.0;
-    public static final double kPivotD = 0.1;  // Damps oscillation at setpoint
+    public static final double kPivotD = 0.1;
 
     /** Motion profile limits — faster for hopper push-out */
     public static final double kPivotMaxVelocityDegPerSec = 360.0;
