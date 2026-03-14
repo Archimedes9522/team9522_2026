@@ -39,7 +39,7 @@ ShootOnTheMoveCommand reads aim point + drivetrain pose/velocity
 ## Robot physical properties
 
 - Dimensions: 28 in long x 26 in wide (wheelbase 24.5 in, trackwidth 22.5 in)
-- Mass: 120 lbs (54.43 kg), updated in Constants.kRobotMassKg and physicalproperties.json
+- Mass: 112.39lbs (50.98 kg), updated in Constants.kRobotMassKg and physicalproperties.json
 - Wheel COF: 1.19 on carpet (black rubber), synced in swerve and PathPlanner configs
 - Turret mounting: 0 degrees = robot rear (backwards mount). ShootOnTheMoveCommand adds 180 degrees to robot-relative angles to get turret-relative angles.
 

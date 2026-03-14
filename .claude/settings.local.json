@@ -8,7 +8,17 @@
       "Bash(python3 -c \"import zipfile; z=zipfile.ZipFile\\(''C:/Users/Owner/.gradle/caches/modules-2/files-2.1/com.revrobotics.frc/REVLib-java/2026.0.3/3efcb7bbb8c9e1e54e9a64b81a7291ed231e876d/REVLib-java-2026.0.3.jar''\\); [print\\(n\\) for n in z.namelist\\(\\) if ''ClosedLoop'' in n or ''FeedbackSensor'' in n]\")",
       "Bash(python3 -c \":*)",
       "Bash(./gradlew build)",
-      "Bash(JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\" PATH=\"C:/Users/Public/wpilib/2026/jdk/bin:$PATH\" ./gradlew build)"
+      "Bash(JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\" PATH=\"C:/Users/Public/wpilib/2026/jdk/bin:$PATH\" ./gradlew build)",
+      "Bash(JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\" PATH=\"C:/Users/Public/wpilib/2026/jdk/bin:$PATH\" ./gradlew compileJava)",
+      "Bash(ls -la /c/team9522_2026/vendordeps/*maple*)",
+      "Bash(git -C /c/team9522_2026 log --oneline -3 -- vendordeps/)",
+      "Bash(unzip -l YAMS-java-2026.3.12-sources.jar)",
+      "Bash(unzip -p YAMS-java-2026.3.12-sources.jar yams/motorcontrollers/local/SparkWrapper.java)",
+      "Read(//tmp/**)",
+      "Bash(unzip -p YAMS-java-2026.3.12-sources.jar yams/motorcontrollers/SmartMotorControllerConfig.java)",
+      "Bash(unzip -l YAMS-java-2026.3.12.jar)",
+      "Read(//c/Users/Public/wpilib/2026/jdk/**)",
+      "Bash(export JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\")"
     ]
   }
 }

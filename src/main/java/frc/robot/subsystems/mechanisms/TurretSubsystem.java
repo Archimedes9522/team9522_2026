@@ -8,7 +8,6 @@ import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
-
 import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
@@ -18,9 +17,9 @@ import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
 
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -34,7 +33,6 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants;
 import frc.robot.Constants.TurretConstants;
 import yams.gearing.GearBox;
 import yams.gearing.MechanismGearing;
@@ -93,6 +91,7 @@ public class TurretSubsystem extends SubsystemBase {
     // because of the 10:1 gearing mismatch.
     SparkMaxConfig sparkConfig = new SparkMaxConfig();
     sparkConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
+    // DO NOT set encoder.inverted() for primary encoder in brushless mode — it's determined by motor inversion
     spark.configure(sparkConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
     // Configure YAMS SmartMotorController — all values matching CA26
@@ -104,10 +103,10 @@ public class TurretSubsystem extends SubsystemBase {
             TurretConstants.kD,
             DegreesPerSecond.of(TurretConstants.kMaxVelocityDegPerSec),
             DegreesPerSecondPerSecond.of(TurretConstants.kMaxAccelDegPerSecSq))
-        .withFeedforward(new SimpleMotorFeedforward(0, TurretConstants.kV, 0))
+        .withFeedforward(new SimpleMotorFeedforward(TurretConstants.kS, TurretConstants.kV, 0))
         .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
-        .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
-        .withMotorInverted(true)
+  .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
+  .withMotorInverted(true)
         .withIdleMode(MotorMode.COAST)
         .withSoftLimit(Degrees.of(-MAX_ONE_DIR_FOV), Degrees.of(MAX_ONE_DIR_FOV))
         .withStatorCurrentLimit(Amps.of(TurretConstants.kCurrentLimitAmps))
@@ -119,8 +118,8 @@ public class TurretSubsystem extends SubsystemBase {
     // Always start at 0° and use rezero (Start button) when physically centered.
     PivotConfig turretConfig = new PivotConfig(motorController)
         .withHardLimit(Degrees.of(-MAX_ONE_DIR_FOV - 5), Degrees.of(MAX_ONE_DIR_FOV + 5))
-        .withStartingPosition(Degrees.of(0))
-        .withMOI(0.05)  // Matching CA26
+        .withStartingPosition(Degrees.of(TurretConstants.kStartingAngleDegrees))
+        .withMOI(0.05)  // kg⋅m² — simulation only; withMomentOfInertia() has compiler incompatibility in this YAMS version
         .withTelemetry("Turret", TelemetryVerbosity.HIGH)
         .withMechanismPositionConfig(
             new MechanismPositionConfig()

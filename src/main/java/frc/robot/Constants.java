@@ -302,25 +302,37 @@ public final class Constants {
     public static final double kMinAngleDegrees = -90.0;
 
     /**
+     * Turret starting angle in degrees — where it physically sits at robot boot.
+     * Must be within the frame perimeter. Set to 90 (left) or -90 (right).
+     * The turret must be manually positioned to this angle before each match.
+     * Use the rezero command (Start button) only when the turret is physically at 0°.
+     */
+    public static final double kStartingAngleDegrees = -90.0;
+
+    /**
      * Operator preset offset for turret angles (degrees).
      * Use this to align D-pad presets with mounting orientation.
      */
     public static final double kOperatorPresetOffsetDegrees = 0.0;
 
-    /** Motor current limit in amps — matching CA26 */
-    public static final int kCurrentLimitAmps = 10;
+    /** Motor current limit in amps */
+    public static final int kCurrentLimitAmps = 20;
 
-    /** Motion profile limits — matching CA26 */
-    public static final double kMaxVelocityDegPerSec = 2440.0;
-    public static final double kMaxAccelDegPerSecSq = 2440.0;
+    /** Motion profile limits (deg/s, deg/s²) */
+    public static final double kMaxVelocityDegPerSec = 500.0;
+    public static final double kMaxAccelDegPerSecSq = 500.0;
 
-    // PID gains for position control — matching CA26
-    public static final double kP = 15.0;
+    // PID gains for position control
+    public static final double kP = 5.0;
     public static final double kI = 0.0;
     public static final double kD = 0.0;
 
-    /** Feedforward velocity gain — matching CA26 */
-    public static final double kV = 7.5;
+    // Feedforward gains (YAMS passes mechanism rev/s to SimpleMotorFeedforward)
+    // NEO free speed through 40:1 = 2.365 rev/s → theoretical kV = 12V / 2.365 = 5.07
+    /** Static friction compensation voltage */
+    public static final double kS = 0.25;
+    /** Velocity feedforward (V per mechanism rev/s) */
+    public static final double kV = 5.5;
   }
 
   /**
@@ -413,24 +425,28 @@ public final class Constants {
     /** Roller outtake speed (duty cycle, -1 to 1) */
     public static final double kOuttakeSpeed = -0.5;
 
-    /** Motor current limits in amps — matching CA26 */
-    public static final int kPivotCurrentLimitAmps = 10;
+    /** Motor current limits in amps */
+    public static final int kPivotCurrentLimitAmps = 30;
     public static final int kRollerCurrentLimitAmps = 40;
-    
-    // PID gains — matching CA26
-    public static final double kPivotP = 25.0;
+
+    // PID gains for pivot position control
+    public static final double kPivotP = 3.0;
     public static final double kPivotI = 0.0;
     public static final double kPivotD = 0.0;
 
-    /** Motion profile limits — matching CA26 */
+    /** Motion profile limits — faster for hopper push-out */
     public static final double kPivotMaxVelocityDegPerSec = 360.0;
     public static final double kPivotMaxAccelDegPerSec2 = 360.0;
 
-    /** Closed-loop ramp — matching CA26 */
+    /** Closed-loop ramp rate (seconds to full output) */
     public static final double kPivotClosedLoopRampSec = 0.1;
 
-    /** Feedforward kV — matching CA26 SimpleMotorFeedforward(0, 10, 0) */
-    public static final double kPivotKv = 10.0;
+    // Feedforward gains (YAMS passes mechanism rev/s to SimpleMotorFeedforward)
+    // Vortex free speed through 83.33:1 = 1.357 rev/s → theoretical kV = 12V / 1.357 = 8.84
+    /** Static friction compensation voltage */
+    public static final double kPivotKs = 0.25;
+    /** Velocity feedforward (V per mechanism rev/s) */
+    public static final double kPivotKv = 9.0;
   }
 
   /**
