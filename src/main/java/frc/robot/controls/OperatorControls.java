@@ -4,8 +4,14 @@
 
 package frc.robot.controls;
 
+import static edu.wpi.first.units.Units.Degrees;
+
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.Constants.ControllerConstants;
+import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.ShootOnTheMoveCommand;
 import frc.robot.subsystems.drive.SwerveSubsystem;
 import frc.robot.subsystems.mechanisms.Superstructure;
@@ -33,6 +39,7 @@ import frc.robot.subsystems.mechanisms.Superstructure;
  *   <li>D-Pad Left: Turret left (+45°)</li>
  *   <li>D-Pad Right: Turret right (-45°)</li>
  *   <li>D-Pad Down: Stow intake</li>
+ *   <li>Right Stick X: Manual turret aim (stick position = turret angle within ±90°)</li>
  *   <li>Start: Re-zero intake pivot and turret</li>
  * </ul>
  */
@@ -117,7 +124,21 @@ public class OperatorControls {
     controller.povRight()
         .onTrue(superstructure.setTurretRight()
             .withName("OperatorControls.setTurretRight"));
-    
+
+    // Right Stick X: Manual turret aim — stick position maps to turret angle
+    // Pushing stick right → turret rotates right (negative angle)
+    // Pushing stick left → turret rotates left (positive angle)
+    // Overrides D-pad presets while stick is active; D-pad presets override back when pressed
+    Trigger rightStickActive = new Trigger(() ->
+        Math.abs(controller.getRightX()) > ControllerConstants.kDeadband);
+
+    rightStickActive.whileTrue(
+        superstructure.turret.setAngleDynamic(
+            () -> Degrees.of(
+                -MathUtil.applyDeadband(controller.getRightX(), ControllerConstants.kDeadband)
+                * TurretConstants.kMaxAngleDegrees))
+            .withName("OperatorControls.manualTurret"));
+
     // D-Pad Down: Stow intake
     controller.povDown()
         .onTrue(superstructure.intake.stow().asProxy()
