@@ -440,9 +440,6 @@ public final class Constants {
     /** Closed-loop ramp rate (seconds to full output) */
     public static final double kPivotClosedLoopRampSec = 0.1;
 
-  /** Closed-loop position tolerance (degrees) */
-  public static final double kPivotToleranceDeg = 4.0;
-
     // Feedforward gains (YAMS passes mechanism rev/s to SimpleMotorFeedforward)
     // Vortex free speed through 83.33:1 = 1.357 rev/s → theoretical kV = 12V / 1.357 = 8.84
     /** Static friction compensation voltage */
