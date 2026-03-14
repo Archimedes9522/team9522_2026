@@ -429,9 +429,9 @@ public final class Constants {
     public static final int kRollerCurrentLimitAmps = 40;
 
     // PID gains for pivot position control
-    public static final double kPivotP = 20.0;
+    public static final double kPivotP = 75.0;
     public static final double kPivotI = 0.0;
-    public static final double kPivotD = 2.0;
+    public static final double kPivotD = 0.1;
 
     /** Motion profile limits — faster for hopper push-out */
     public static final double kPivotMaxVelocityDegPerSec = 360.0;
@@ -447,7 +447,7 @@ public final class Constants {
     /** Gravity compensation — YAMS Arm handles this via mass/length in ArmConfig */
     public static final double kPivotKg = 0.5;
     /** Velocity feedforward (V per mechanism rev/s) — passed as kV to SimpleMotorFeedforward */
-    public static final double kPivotKv = 9.0;
+    public static final double kPivotKv = 7.5;
   }
 
   /**
