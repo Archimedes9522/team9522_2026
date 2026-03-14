@@ -296,18 +296,17 @@ public final class Constants {
     public static final double kGearRatio = 40.0;
 
     /** Soft limit for turret rotation in degrees (positive = clockwise) */
-    public static final double kMaxAngleDegrees = 90.0;
+    public static final double kMaxAngleDegrees = 80.0;
 
     /** Soft limit for turret rotation in degrees (negative = counter-clockwise) */
-    public static final double kMinAngleDegrees = -90.0;
+    public static final double kMinAngleDegrees = -80.0;
 
     /**
      * Turret starting angle in degrees — where it physically sits at robot boot.
-     * Must be within the frame perimeter. Set to 90 (left) or -90 (right).
-     * The turret must be manually positioned to this angle before each match.
+     * Position the turret at 0° (centered) before each match.
      * Use the rezero command (Start button) only when the turret is physically at 0°.
      */
-    public static final double kStartingAngleDegrees = -90.0;
+    public static final double kStartingAngleDegrees = 0.0;
 
     /**
      * Operator preset offset for turret angles (degrees).
@@ -323,7 +322,7 @@ public final class Constants {
     public static final double kMaxAccelDegPerSecSq = 500.0;
 
     // PID gains for position control
-    public static final double kP = 2.0;
+    public static final double kP = 10.0;
     public static final double kI = 0.0;
     public static final double kD = 0.0;
 
@@ -430,9 +429,9 @@ public final class Constants {
     public static final int kRollerCurrentLimitAmps = 40;
 
     // PID gains for pivot position control
-    public static final double kPivotP = 30.0;
+    public static final double kPivotP = 20.0;
     public static final double kPivotI = 0.0;
-    public static final double kPivotD = 0.1;
+    public static final double kPivotD = 2.0;
 
     /** Motion profile limits — faster for hopper push-out */
     public static final double kPivotMaxVelocityDegPerSec = 360.0;

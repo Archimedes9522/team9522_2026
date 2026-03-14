@@ -232,9 +232,13 @@ public class RobotContainer {
                 
                 // Add a "Do Nothing" default option
                 autoChooser.setDefaultOption("Do Nothing", Commands.none().withName("Do Nothing"));
-                
-                // Add any custom autos here
-                // autoChooser.addOption("Drive Forward", m_robotDrive.driveForward().withTimeout(5));
+
+                // SysId routines — select one, deploy, enable in Test mode, then analyze the log
+                // Steps: 1) Select routine  2) Deploy  3) Test mode  4) Enable  5) Run full sequence
+                // 6) Disable  7) Download .wpilog from RIO  8) Open in WPILib SysId Tool
+                if (m_turret != null) {
+                        autoChooser.addOption("[SysId] Turret", m_turret.sysId());
+                }
                 
                 SmartDashboard.putData("Auto Chooser", autoChooser);
         }
