@@ -65,7 +65,7 @@ public final class Constants {
   
   // === ROBOT PHYSICAL PROPERTIES ===
   /** Robot mass in pounds — matches physicalproperties.json robotMass */
-  public static final double kRobotMassLbs = 120;
+  public static final double kRobotMassLbs = 112.39;
   
   /** Robot mass in kilograms (for WPILib/PathPlanner APIs) */
   public static final double kRobotMassKg = Units.lbsToKilograms(kRobotMassLbs);
