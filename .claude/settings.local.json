@@ -32,7 +32,9 @@
       "Bash(mkdir -p /c/tmp/yagsl-src)",
       "Read(//c/tmp/**)",
       "Bash(/c/Users/Public/wpilib/2026/jdk/bin/jar.exe xf \"/c/Users/Owner/.gradle/caches/modules-2/files-2.1/swervelib/YAGSL-java/2026.3.12/8723fc1d15e0b409cb1f96c21e8dde7234cfc349/YAGSL-java-2026.3.12-sources.jar\" swervelib/SwerveInputStream.java swervelib/SwerveDrive.java)",
-      "Bash(JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\" ./gradlew build)"
+      "Bash(JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\" ./gradlew build)",
+      "Read(//c/team9522_2025//**)",
+      "Read(//c/team9522_2025/**)"
     ],
     "model": "opus",
     "fastMode": true

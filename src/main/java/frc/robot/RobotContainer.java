@@ -222,10 +222,8 @@ public class RobotContainer {
                                         .ignoringDisable(true));
                 }
                 
-                // Silence joystick warnings in simulation
-                if (!Robot.isReal()) {
-                        DriverStation.silenceJoystickConnectionWarning(true);
-                }
+                // Silence joystick connection warnings (controller 2 is optional pose controller)
+                DriverStation.silenceJoystickConnectionWarning(true);
                 
                 // ==================== AUTO CHOOSER ====================
                 // AutoBuilder.buildAutoChooser() automatically finds all .auto files

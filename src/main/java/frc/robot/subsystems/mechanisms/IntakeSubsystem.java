@@ -106,7 +106,7 @@ public class IntakeSubsystem extends SubsystemBase {
             IntakeConstants.kPivotD,
             DegreesPerSecond.of(IntakeConstants.kPivotMaxVelocityDegPerSec),
             DegreesPerSecondPerSecond.of(IntakeConstants.kPivotMaxAccelDegPerSec2))
-        .withFeedforward(new SimpleMotorFeedforward(IntakeConstants.kPivotKs, IntakeConstants.kPivotKg, IntakeConstants.kPivotKv))
+        .withFeedforward(new SimpleMotorFeedforward(IntakeConstants.kPivotKs, IntakeConstants.kPivotKv, 0))
         .withTelemetry("IntakePivotMotor", TelemetryVerbosity.HIGH)
         .withGearing(new MechanismGearing(GearBox.fromReductionStages(IntakeConstants.kPivotGearRatio)))
         .withMotorInverted(false)

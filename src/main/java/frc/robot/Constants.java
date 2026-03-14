@@ -323,7 +323,7 @@ public final class Constants {
     public static final double kMaxAccelDegPerSecSq = 500.0;
 
     // PID gains for position control
-    public static final double kP = 5.0;
+    public static final double kP = 2.0;
     public static final double kI = 0.0;
     public static final double kD = 0.0;
 
@@ -332,7 +332,7 @@ public final class Constants {
     /** Static friction compensation voltage */
     public static final double kS = 0.025;
     /** Velocity feedforward (V per mechanism rev/s) */
-    public static final double kV = 1.0;
+    public static final double kV = 5.0;
   }
 
   /**
@@ -432,7 +432,7 @@ public final class Constants {
     // PID gains for pivot position control
     public static final double kPivotP = 30.0;
     public static final double kPivotI = 0.0;
-    public static final double kPivotD = 0.0;
+    public static final double kPivotD = 0.1;  // Damps oscillation at setpoint
 
     /** Motion profile limits — faster for hopper push-out */
     public static final double kPivotMaxVelocityDegPerSec = 360.0;
@@ -445,8 +445,9 @@ public final class Constants {
     // Vortex free speed through 83.33:1 = 1.357 rev/s → theoretical kV = 12V / 1.357 = 8.84
     /** Static friction compensation voltage */
     public static final double kPivotKs = 0.025;
+    /** Gravity compensation — YAMS Arm handles this via mass/length in ArmConfig */
     public static final double kPivotKg = 0.5;
-    /** Velocity feedforward (V per mechanism rev/s) */
+    /** Velocity feedforward (V per mechanism rev/s) — passed as kV to SimpleMotorFeedforward */
     public static final double kPivotKv = 9.0;
   }
 
