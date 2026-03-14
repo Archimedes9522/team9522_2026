@@ -429,7 +429,7 @@ public final class Constants {
     public static final int kRollerCurrentLimitAmps = 40;
 
     // PID gains for pivot position control
-    public static final double kPivotP = 75.0;
+    public static final double kPivotP = 100.0;
     public static final double kPivotI = 0.0;
     public static final double kPivotD = 0.1;
 
