@@ -116,6 +116,7 @@ public class IntakeSubsystem extends SubsystemBase {
             Degrees.of(IntakeConstants.kPivotSoftMaxAngleDeg))
         .withStatorCurrentLimit(Amps.of(IntakeConstants.kPivotCurrentLimitAmps))
         .withClosedLoopRampRate(Seconds.of(IntakeConstants.kPivotClosedLoopRampSec))
+  .withClosedLoopTolerance(Degrees.of(IntakeConstants.kPivotToleranceDeg))
         .withOpenLoopRampRate(Seconds.of(0.1));
 
     pivotController = new SparkWrapper(pivotMotor, DCMotor.getNeoVortex(1), pivotConfig);
