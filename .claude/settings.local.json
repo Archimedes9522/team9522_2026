@@ -1,5 +1,7 @@
 {
   "permissions": {
+    "model": "opus",
+    "fastMode": true,
     "allow": [
       "Bash(xargs grep -l \"getTurretAngle\\\\|setTurretAngle\")",
       "Bash(./gradlew compileJava)",

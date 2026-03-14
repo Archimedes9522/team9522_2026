@@ -17,7 +17,7 @@
   If a specific motor is missing, add per-mechanism skip flags as needed.
 
 - [ ] **Verify robot mass**  
-  `physicalproperties.json` and `Constants.java` both say 120 lbs (from CA26).  
+  `physicalproperties.json` and `Constants.java` both say 112.39 lbs.  
   Weigh the actual 2026 robot and update `kRobotMassLbs` and `physicalproperties.json` `robotMass`.
 
 - [ ] **Test PathPlanner auto paths on real robot**  
@@ -70,7 +70,7 @@
   - Robot: 28" long × 26" wide (0.7112m × 0.6604m)  
   - Module positions: front=±12.25", left=±11.25" (wheelbase=24.5", trackwidth=22.5")  
   - PathPlanner modules: FL=0.31115,0.28575 / FR=0.31115,-0.28575 / BL=-0.31115,0.28575 / BR=-0.31115,-0.28575  
-  - Robot mass: 54.43 kg (120 lbs), wheelCOF: 1.19, wheel radius: 0.0381m
+  - Robot mass: 50.98 kg (112.39 lbs), wheelCOF: 1.19, wheel radius: 0.0381m
 
 - [ ] **Tune shooter speed interpolation table**  
   `ShootOnTheMoveCommand.java` has CA26-based RPM values (2m=2700, 3m=3000, 4m=3300, 4.86m=3750).  
