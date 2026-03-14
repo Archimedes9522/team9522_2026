@@ -5,21 +5,15 @@
     "data": {
       "commands": [
         {
-          "type": "named",
-          "data": {
-            "name": "autoDumpAll"
-          }
-        },
-        {
           "type": "path",
           "data": {
-            "pathName": "Taxi Bottom"
+            "pathName": "Line Cross Top"
           }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": "Taxi + Shoot",
+  "folder": "Taxi",
   "choreoAuto": false
 }

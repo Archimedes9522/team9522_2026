@@ -2,27 +2,15 @@
   "version": "2025.0",
   "waypoints": [
     {
-      "anchor": {
-        "x": 4.5,
-        "y": 4.0
-      },
+      "anchor": { "x": 4.5, "y": 4.0 },
       "prevControl": null,
-      "nextControl": {
-        "x": 3.5,
-        "y": 4.0
-      },
+      "nextControl": { "x": 3.5, "y": 4.0 },
       "isLocked": false,
       "linkedName": "LineCenter"
     },
     {
-      "anchor": {
-        "x": 2.5,
-        "y": 4.0
-      },
-      "prevControl": {
-        "x": 3.5,
-        "y": 4.0
-      },
+      "anchor": { "x": 2.5, "y": 4.0 },
+      "prevControl": { "x": 3.5, "y": 4.0 },
       "nextControl": null,
       "isLocked": false,
       "linkedName": null
@@ -40,15 +28,9 @@
     "nominalVoltage": 12.0,
     "unlimited": false
   },
-  "goalEndState": {
-    "velocity": 0,
-    "rotation": 180.0
-  },
+  "goalEndState": { "velocity": 0, "rotation": 180.0 },
   "reversed": false,
-  "folder": "Line Cross",
-  "idealStartingState": {
-    "velocity": 0,
-    "rotation": 180.0
-  },
+  "folder": "Taxi",
+  "idealStartingState": { "velocity": 0, "rotation": 180.0 },
   "useDefaultConstraints": false
 }

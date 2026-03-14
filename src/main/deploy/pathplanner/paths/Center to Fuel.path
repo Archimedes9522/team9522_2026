@@ -2,23 +2,23 @@
   "version": "2025.0",
   "waypoints": [
     {
-      "anchor": { "x": 1.5, "y": 4.0 },
+      "anchor": { "x": 4.5, "y": 4.0 },
       "prevControl": null,
-      "nextControl": { "x": 1.5, "y": 2.0 },
+      "nextControl": { "x": 4.5, "y": 2.0 },
       "isLocked": false,
-      "linkedName": "StartCenter"
+      "linkedName": "LineCenter"
     },
     {
-      "anchor": { "x": 3.0, "y": 0.45 },
-      "prevControl": { "x": 2.0, "y": 0.45 },
-      "nextControl": { "x": 4.5, "y": 0.45 },
+      "anchor": { "x": 5.5, "y": 0.45 },
+      "prevControl": { "x": 4.5, "y": 0.45 },
+      "nextControl": { "x": 6.0, "y": 0.45 },
       "isLocked": false,
       "linkedName": null
     },
     {
-      "anchor": { "x": 6.0, "y": 0.45 },
-      "prevControl": { "x": 5.0, "y": 0.45 },
-      "nextControl": { "x": 6.5, "y": 0.45 },
+      "anchor": { "x": 6.5, "y": 0.45 },
+      "prevControl": { "x": 6.0, "y": 0.45 },
+      "nextControl": { "x": 7.0, "y": 0.45 },
       "isLocked": false,
       "linkedName": null
     },

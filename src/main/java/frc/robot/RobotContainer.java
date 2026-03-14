@@ -105,8 +105,8 @@ public class RobotContainer {
         private final Vision m_vision;
         
         // ==================== ZONE DETECTION ====================
-        /** Current alliance for change detection */
-        private Alliance currentAlliance = Alliance.Red;
+        /** Current alliance for change detection (defaults to Blue per WPILib convention) */
+        private Alliance currentAlliance = Alliance.Blue;
         
         // ==================== AUTO CHOOSER ====================
         /** Dropdown in SmartDashboard/Shuffleboard to select autonomous routine */
@@ -341,10 +341,11 @@ public class RobotContainer {
         
         /**
          * Gets the current alliance.
-         * @return Current alliance, defaults to Red if not connected to FMS
+         * Defaults to Blue (WPILib convention — field origin is at the Blue alliance wall).
+         * @return Current alliance, defaults to Blue if not connected to FMS
          */
         private Alliance getAlliance() {
-                return DriverStation.getAlliance().orElse(Alliance.Red);
+                return DriverStation.getAlliance().orElse(Alliance.Blue);
         }
         
         /**
@@ -442,16 +443,23 @@ public class RobotContainer {
                         }
                 }
                 
-                // In simulation, reset pose to the correct alliance side
-                // Only reset when disabled - PathPlanner's resetOdom handles auto starting position
-                if (!Robot.isReal() && DriverStation.isDisabled()) {
-                        Pose2d newPose = (alliance == Alliance.Blue)
-                                ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))      // Blue: left side
-                                : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));  // Red: right side
-                        m_robotDrive.resetOdometry(newPose);
-                        System.out.println("[Alliance] Reset pose to: " + newPose);
-                } else if (!Robot.isReal()) {
-                        System.out.println("[Alliance] Skipping pose reset (robot enabled or auto running)");
+                // Reset heading when alliance changes (only when disabled to avoid disrupting matches)
+                // This ensures field-oriented driving uses the correct heading for the alliance.
+                // On real robots: only resets heading (keeps X, Y from current pose)
+                // In simulation: resets full pose to the correct alliance side
+                if (DriverStation.isDisabled()) {
+                        if (!Robot.isReal()) {
+                                Pose2d newPose = (alliance == Alliance.Blue)
+                                        ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))
+                                        : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));
+                                m_robotDrive.resetOdometry(newPose);
+                                System.out.println("[Alliance] Sim: Reset pose to: " + newPose);
+                        } else {
+                                m_robotDrive.resetHeadingForAlliance(alliance);
+                                System.out.println("[Alliance] Real: Reset heading for " + alliance);
+                        }
+                } else {
+                        System.out.println("[Alliance] Skipping heading reset (robot enabled)");
                 }
         }
 }

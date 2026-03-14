@@ -5,21 +5,15 @@
     "data": {
       "commands": [
         {
-          "type": "wait",
-          "data": {
-            "waitTime": 1.0
-          }
-        },
-        {
           "type": "path",
           "data": {
-            "pathName": "Taxi Bottom"
+            "pathName": "Line Cross Center"
           }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": "Taxi Only",
+  "folder": "Taxi",
   "choreoAuto": false
 }

@@ -2,15 +2,15 @@
   "version": "2025.0",
   "waypoints": [
     {
-      "anchor": { "x": 1.5, "y": 0.45 },
+      "anchor": { "x": 4.5, "y": 0.75 },
       "prevControl": null,
-      "nextControl": { "x": 3.0, "y": 0.45 },
+      "nextControl": { "x": 5.5, "y": 0.45 },
       "isLocked": false,
-      "linkedName": "StartBottom"
+      "linkedName": "LineBottom"
     },
     {
       "anchor": { "x": 6.0, "y": 0.45 },
-      "prevControl": { "x": 4.5, "y": 0.45 },
+      "prevControl": { "x": 5.0, "y": 0.45 },
       "nextControl": { "x": 6.5, "y": 0.45 },
       "isLocked": false,
       "linkedName": null

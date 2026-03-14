@@ -13,13 +13,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Line Cross Top"
+            "pathName": "Line Cross Bottom"
           }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": "Shoot + Cross",
+  "folder": "Shoot + Taxi",
   "choreoAuto": false
 }

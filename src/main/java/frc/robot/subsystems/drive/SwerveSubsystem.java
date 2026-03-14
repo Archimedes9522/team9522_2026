@@ -29,6 +29,7 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -452,11 +453,56 @@ public class SwerveSubsystem extends SubsystemBase {
   /**
    * Creates a command that resets the gyro heading.
    * Use when the robot is facing away from the driver station.
+   *
+   * @deprecated Use {@link #zeroHeadingForAllianceCommand()} instead, which
+   *             sets the correct heading for the current alliance.
    */
+  @Deprecated
   public Command zeroHeadingCommand() {
     return this.runOnce(() -> swerveDrive.zeroGyro());
   }
-  
+
+  /**
+   * Creates a command that resets the gyro heading based on the current alliance.
+   *
+   * <p>YAGSL's {@code zeroGyro()} always sets heading to 0°, which is only correct
+   * for Blue alliance (robot facing toward Red wall). On Red alliance, the robot
+   * faces toward the Blue wall (180°), so the heading must be set to 180° instead.
+   *
+   * <p>Press this when the robot is facing <b>away from the driver station</b>:
+   * <ul>
+   *   <li>Blue: heading set to 0° (facing toward Red wall)</li>
+   *   <li>Red: heading set to 180° (facing toward Blue wall)</li>
+   * </ul>
+   *
+   * <p>This works correctly with {@code SwerveInputStream.allianceRelativeControl(true)},
+   * which converts driver-relative "forward" to the correct field direction.
+   */
+  public Command zeroHeadingForAllianceCommand() {
+    return this.runOnce(() -> {
+      Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
+      Rotation2d heading = (alliance == Alliance.Red)
+          ? Rotation2d.fromDegrees(180)
+          : Rotation2d.fromDegrees(0);
+      resetOdometry(new Pose2d(getPose().getTranslation(), heading));
+      System.out.println("[Gyro] Zeroed heading to " + heading.getDegrees()
+          + "° for " + alliance + " alliance");
+    }).withName("SwerveSubsystem.zeroHeadingForAlliance");
+  }
+
+  /**
+   * Resets the heading to the correct value for the given alliance.
+   * Preserves the current position (X, Y) and only changes the rotation.
+   *
+   * @param alliance The current alliance
+   */
+  public void resetHeadingForAlliance(Alliance alliance) {
+    Rotation2d heading = (alliance == Alliance.Red)
+        ? Rotation2d.fromDegrees(180)
+        : Rotation2d.fromDegrees(0);
+    resetOdometry(new Pose2d(getPose().getTranslation(), heading));
+  }
+
   /**
    * Zeros the gyro heading immediately.
    * Use zeroHeadingCommand() for a command-based approach.

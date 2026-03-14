@@ -330,9 +330,9 @@ public final class Constants {
     // Feedforward gains (YAMS passes mechanism rev/s to SimpleMotorFeedforward)
     // NEO free speed through 40:1 = 2.365 rev/s → theoretical kV = 12V / 2.365 = 5.07
     /** Static friction compensation voltage */
-    public static final double kS = 0.25;
+    public static final double kS = 0.025;
     /** Velocity feedforward (V per mechanism rev/s) */
-    public static final double kV = 5.5;
+    public static final double kV = 1.0;
   }
 
   /**
@@ -430,7 +430,7 @@ public final class Constants {
     public static final int kRollerCurrentLimitAmps = 40;
 
     // PID gains for pivot position control
-    public static final double kPivotP = 3.0;
+    public static final double kPivotP = 30.0;
     public static final double kPivotI = 0.0;
     public static final double kPivotD = 0.0;
 
@@ -444,7 +444,8 @@ public final class Constants {
     // Feedforward gains (YAMS passes mechanism rev/s to SimpleMotorFeedforward)
     // Vortex free speed through 83.33:1 = 1.357 rev/s → theoretical kV = 12V / 1.357 = 8.84
     /** Static friction compensation voltage */
-    public static final double kPivotKs = 0.25;
+    public static final double kPivotKs = 0.025;
+    public static final double kPivotKg = 0.5;
     /** Velocity feedforward (V per mechanism rev/s) */
     public static final double kPivotKv = 9.0;
   }

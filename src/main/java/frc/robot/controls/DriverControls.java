@@ -145,10 +145,12 @@ public class DriverControls {
     controller.leftStick()
         .whileTrue(drivetrain.lockCommand());
     
-    // Start Button - Zero gyro heading
+    // Start Button - Zero gyro heading (alliance-aware)
     // Press when robot is facing AWAY from driver station
+    // Blue alliance: heading set to 0° (facing Red wall)
+    // Red alliance: heading set to 180° (facing Blue wall)
     controller.start()
-        .onTrue(drivetrain.zeroHeadingCommand());
+        .onTrue(drivetrain.zeroHeadingForAllianceCommand());
     
     // ==================== TEST MODE BINDINGS ====================
     // These bindings are only active in Test mode (useful for debugging)

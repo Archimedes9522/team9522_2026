@@ -1,7 +1,5 @@
 {
   "permissions": {
-    "model": "opus",
-    "fastMode": true,
     "allow": [
       "Bash(xargs grep -l \"getTurretAngle\\\\|setTurretAngle\")",
       "Bash(./gradlew compileJava)",
@@ -20,7 +18,23 @@
       "Bash(unzip -p YAMS-java-2026.3.12-sources.jar yams/motorcontrollers/SmartMotorControllerConfig.java)",
       "Bash(unzip -l YAMS-java-2026.3.12.jar)",
       "Read(//c/Users/Public/wpilib/2026/jdk/**)",
-      "Bash(export JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\")"
-    ]
+      "Bash(export JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\")",
+      "Read(//c/Users/Owner/**)",
+      "Read(//c/Program Files/**)",
+      "Read(//c//**)",
+      "Bash(find /c -maxdepth 1 -type d)",
+      "Bash(env)",
+      "Read(//c/Users/Public/wpilib/**)",
+      "Read(//c/Users/Public/wpilib/2026//**)",
+      "Bash(JAR=\"/c/Users/Public/wpilib/2026/jdk/bin/jar.exe\")",
+      "Bash(\"$JAR\" tf \"/c/Users/Owner/.gradle/caches/modules-2/files-2.1/swervelib/YAGSL-java/2026.3.12/8723fc1d15e0b409cb1f96c21e8dde7234cfc349/YAGSL-java-2026.3.12-sources.jar\")",
+      "Bash(/c/Users/Public/wpilib/2026/jdk/bin/jar.exe tf \"/c/Users/Owner/.gradle/caches/modules-2/files-2.1/swervelib/YAGSL-java/2026.3.12/8723fc1d15e0b409cb1f96c21e8dde7234cfc349/YAGSL-java-2026.3.12-sources.jar\")",
+      "Bash(mkdir -p /c/tmp/yagsl-src)",
+      "Read(//c/tmp/**)",
+      "Bash(/c/Users/Public/wpilib/2026/jdk/bin/jar.exe xf \"/c/Users/Owner/.gradle/caches/modules-2/files-2.1/swervelib/YAGSL-java/2026.3.12/8723fc1d15e0b409cb1f96c21e8dde7234cfc349/YAGSL-java-2026.3.12-sources.jar\" swervelib/SwerveInputStream.java swervelib/SwerveDrive.java)",
+      "Bash(JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\" ./gradlew build)"
+    ],
+    "model": "opus",
+    "fastMode": true
   }
 }
