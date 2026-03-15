@@ -57,6 +57,9 @@ public class OperatorControls {
   /** Tracks whether auto-aim is enabled (toggled by left bumper) */
   private static boolean autoAimEnabled = false;
 
+  /** Accumulated turret angle for rate-based manual control (degrees) */
+  private static double manualTurretTargetDeg = 0.0;
+
   /**
    * Configures the operator controller bindings.
    * Use this version before Superstructure is available.
@@ -121,31 +124,45 @@ public class OperatorControls {
     
     // D-Pad Up: Turret forward (0°)
     controller.povUp()
-        .onTrue(superstructure.setTurretForward()
+        .onTrue(Commands.runOnce(() -> manualTurretTargetDeg = 0)
+            .andThen(superstructure.setTurretForward())
             .withName("OperatorControls.setTurretForward"));
-    
+
     // D-Pad Left: Turret left (+45°)
     controller.povLeft()
-        .onTrue(superstructure.setTurretLeft()
+        .onTrue(Commands.runOnce(() -> manualTurretTargetDeg = 45)
+            .andThen(superstructure.setTurretLeft())
             .withName("OperatorControls.setTurretLeft"));
-    
+
     // D-Pad Right: Turret right (-45°)
     controller.povRight()
-        .onTrue(superstructure.setTurretRight()
+        .onTrue(Commands.runOnce(() -> manualTurretTargetDeg = -45)
+            .andThen(superstructure.setTurretRight())
             .withName("OperatorControls.setTurretRight"));
 
-    // Right Stick X: Manual turret aim — stick position maps to turret angle
-    // Pushing stick right → turret rotates right (negative angle)
-    // Pushing stick left → turret rotates left (positive angle)
-    // Overrides D-pad presets while stick is active; D-pad presets override back when pressed
+    // Right Stick X: Manual turret aim — rate-based control
+    // Stick deflection controls turret angular velocity, NOT absolute position.
+    // This lets the operator aim to any angle and release the stick to hold it.
+    // ~2° per cycle at full stick = ~100°/sec at 50Hz.
+    final double turretRatePerCycle = 2.0;
+
     Trigger rightStickActive = new Trigger(() ->
         Math.abs(controller.getRightX()) > ControllerConstants.kDeadband);
 
+    rightStickActive.onTrue(Commands.runOnce(() ->
+        manualTurretTargetDeg = superstructure.getTurretAngle().in(Degrees)));
+
     rightStickActive.whileTrue(
-        superstructure.turret.setAngleDynamic(
-            () -> Degrees.of(
-                -MathUtil.applyDeadband(controller.getRightX(), ControllerConstants.kDeadband)
-                * TurretConstants.kMaxAngleDegrees))
+        Commands.run(() -> {
+          double stickInput = -MathUtil.applyDeadband(
+              controller.getRightX(), ControllerConstants.kDeadband);
+          manualTurretTargetDeg += stickInput * turretRatePerCycle;
+          manualTurretTargetDeg = MathUtil.clamp(
+              manualTurretTargetDeg,
+              -TurretConstants.kMaxAngleDegrees,
+              TurretConstants.kMaxAngleDegrees);
+          superstructure.turret.setTargetAngle(Degrees.of(manualTurretTargetDeg));
+        }, superstructure.turret)
             .withName("OperatorControls.manualTurret"));
 
     // D-Pad Down: Stow intake
@@ -187,7 +204,6 @@ public class OperatorControls {
           SmartDashboard.putNumber("Auto-RPM/DistanceM", distance);
           SmartDashboard.putNumber("Auto-RPM/TargetRPM", rpm);
         }, superstructure.shooter)
-        .finallyDo(() -> superstructure.shooter.setTargetSpeed(RPM.of(0)))
         .withName("OperatorControls.autoRPM"));
   }
   

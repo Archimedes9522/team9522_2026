@@ -175,7 +175,10 @@ public class IntakeSubsystem extends SubsystemBase {
   public Command setPivotAngle(Angle angle) {
     return Commands.run(() -> {
       double errorDeg = Math.abs(getPivotAngle().in(Degrees) - angle.in(Degrees));
-      if (errorDeg > IntakeConstants.kPivotToleranceDeg) {
+      // At stow (near 0°), always drive to position — the hard stop prevents oscillation.
+      // At other angles, coast within tolerance to prevent buzzing.
+      boolean isStow = angle.in(Degrees) < 5.0;
+      if (isStow || errorDeg > IntakeConstants.kPivotToleranceDeg) {
         pivotController.setPosition(angle);
       } else {
         pivotController.setDutyCycle(0);
