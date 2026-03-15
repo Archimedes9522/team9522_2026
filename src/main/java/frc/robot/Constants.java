@@ -455,6 +455,11 @@ public final class Constants {
     public static final double kPivotKg = 0.5;
     /** Velocity feedforward (V per mechanism rev/s) — passed as kV to SimpleMotorFeedforward */
     public static final double kPivotKv = 1.0;
+
+    /** Position tolerance in degrees — within this band, the pivot stops correcting
+     *  and coasts via gearbox friction. Prevents oscillation at setpoint.
+     *  83.33:1 ratio means gravity backdrive is negligible so coast holds position. */
+    public static final double kPivotToleranceDeg = 3.0;
   }
 
   /**
@@ -469,13 +474,7 @@ public final class Constants {
     
     /** Gear reduction: 4:1 MAXPlanetary Sport Gearbox + 1:1 belt */
     public static final double kGearRatio = 4.0;
-    
-    /** DIO port for the entry beam break sensor */
-    public static final int kEntryBeamBreakPort = 0;
-    
-    /** DIO port for the exit beam break sensor */
-    public static final int kExitBeamBreakPort = 1;
-    
+
     /** Feed speed (duty cycle, -1 to 1) */
     public static final double kFeedSpeed = 1;  // Increased from 0.6 to reduce jamming
     

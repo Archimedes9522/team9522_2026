@@ -12,7 +12,9 @@ import static edu.wpi.first.units.Units.Feet;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.Pounds;
 import static edu.wpi.first.units.Units.RPM;
+import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.Volts;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -162,13 +164,23 @@ public class IntakeSubsystem extends SubsystemBase {
   // ==================== PIVOT COMMANDS ====================
 
   /**
-   * Sets the pivot to a specific angle.
-   * 
+   * Sets the pivot to a specific angle with tolerance deadband.
+   * PID drives the arm to the target, then once within tolerance the motor
+   * coasts via gearbox friction (83.33:1 ratio prevents gravity backdrive).
+   * This eliminates oscillation/shaking at the setpoint.
+   *
    * @param angle Target angle
    * @return Command that moves to the angle
    */
   public Command setPivotAngle(Angle angle) {
-    return intakePivot.setAngle(angle).withName("IntakePivot.SetAngle");
+    return Commands.run(() -> {
+      double errorDeg = Math.abs(getPivotAngle().in(Degrees) - angle.in(Degrees));
+      if (errorDeg > IntakeConstants.kPivotToleranceDeg) {
+        pivotController.setPosition(angle);
+      } else {
+        pivotController.setDutyCycle(0);
+      }
+    }, this).withName("IntakePivot.SetAngle");
   }
 
   /**
@@ -217,7 +229,10 @@ public class IntakeSubsystem extends SubsystemBase {
    */
   public Command deployAndRollCommand() {
     return Commands.run(() -> {
-      pivotController.setPosition(Degrees.of(DEPLOYED_ANGLE));
+      double errorDeg = Math.abs(getPivotAngle().in(Degrees) - DEPLOYED_ANGLE);
+      if (errorDeg > IntakeConstants.kPivotToleranceDeg) {
+        pivotController.setPosition(Degrees.of(DEPLOYED_ANGLE));
+      }
       rollerController.setDutyCycle(IntakeConstants.kIntakeSpeed);
     }, this).finallyDo(() -> {
       rollerController.setDutyCycle(0);
@@ -232,7 +247,10 @@ public class IntakeSubsystem extends SubsystemBase {
    */
   public Command deployAndEjectCommand() {
     return Commands.run(() -> {
-      pivotController.setPosition(Degrees.of(DEPLOYED_ANGLE));
+      double errorDeg = Math.abs(getPivotAngle().in(Degrees) - DEPLOYED_ANGLE);
+      if (errorDeg > IntakeConstants.kPivotToleranceDeg) {
+        pivotController.setPosition(Degrees.of(DEPLOYED_ANGLE));
+      }
       rollerController.setDutyCycle(IntakeConstants.kOuttakeSpeed);
     }, this).finallyDo(() -> {
       rollerController.setDutyCycle(0);
@@ -249,6 +267,18 @@ public class IntakeSubsystem extends SubsystemBase {
   public Command rezero() {
     return Commands.runOnce(() -> pivotMotor.getEncoder().setPosition(0), this)
         .withName("IntakePivot.Rezero");
+  }
+
+  // ==================== SYSID ====================
+
+  /**
+   * Runs system identification for pivot feedforward/PID tuning.
+   * Conservative voltages (4V max) because the arm is gravity-affected.
+   *
+   * @return SysId command sequence
+   */
+  public Command sysId() {
+    return intakePivot.sysId(Volts.of(4), Volts.of(1).per(Second), Seconds.of(8));
   }
 
   // ==================== GETTERS ====================

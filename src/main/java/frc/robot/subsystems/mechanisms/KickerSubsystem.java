@@ -35,7 +35,7 @@ import yams.motorcontrollers.local.SparkWrapper;
  * 
  * <p>Hardware:
  * <ul>
- *   <li>1x NEO motor with 4:1 reduction</li>
+ *   <li>1x NEO motor with 3.2:1 reduction (4:1 gearbox × 32:40 sprocket)</li>
  * </ul>
  */
 public class KickerSubsystem extends SubsystemBase {

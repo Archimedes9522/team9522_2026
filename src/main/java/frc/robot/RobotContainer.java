@@ -239,6 +239,9 @@ public class RobotContainer {
                 if (m_turret != null) {
                         autoChooser.addOption("[SysId] Turret", m_turret.sysId());
                 }
+                if (m_intake != null) {
+                        autoChooser.addOption("[SysId] Intake Pivot", m_intake.sysId());
+                }
                 
                 SmartDashboard.putData("Auto Chooser", autoChooser);
         }

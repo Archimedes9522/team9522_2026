@@ -296,14 +296,6 @@ public class Superstructure extends SubsystemBase {
   /**
    * Deploys intake and runs rollers.
    */
-  public Command deployAndIntakeCommand() {
-    return intake.deployAndRollCommand().withName("Superstructure.deployAndIntake");
-  }
-
-  /**
-   * Deploys intake and runs rollers.
-   * Alias for deployAndIntakeCommand() for compatibility.
-   */
   public Command setIntakeDeployAndRoll() {
     return intake.deployAndRollCommand().withName("Superstructure.setIntakeDeployAndRoll");
   }

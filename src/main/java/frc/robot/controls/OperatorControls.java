@@ -5,9 +5,14 @@
 package frc.robot.controls;
 
 import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.RPM;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ControllerConstants;
@@ -35,6 +40,7 @@ import frc.robot.subsystems.mechanisms.Superstructure;
  *   <li>A Button: Feed all (run hopper and kicker forward)</li>
  *   <li>B Button: Back feed (reverse hopper and kicker)</li>
  *   <li>Left Bumper: Toggle auto-aim (shoot on the move)</li>
+ *   <li>Left Trigger: Auto-RPM only (distance-based shooter speed, turret stays manual)</li>
  *   <li>D-Pad Up: Turret forward</li>
  *   <li>D-Pad Left: Turret left (+45°)</li>
  *   <li>D-Pad Right: Turret right (-45°)</li>
@@ -47,6 +53,9 @@ public class OperatorControls {
   
   /** The operator's Xbox controller */
   private static CommandXboxController controller;
+
+  /** Tracks whether auto-aim is enabled (toggled by left bumper) */
+  private static boolean autoAimEnabled = false;
 
   /**
    * Configures the operator controller bindings.
@@ -145,13 +154,41 @@ public class OperatorControls {
             .withName("OperatorControls.stowIntake"));
     
     // ==================== AUTO-AIM ====================
-    
-    // Left Bumper: Toggle auto-aim (shoot on the move with lead compensation)
+
+    // Left Bumper: Toggle auto-aim on/off using a boolean + Trigger.whileTrue.
+    // The boolean tracks intended state; whileTrue handles command lifecycle.
+    // This avoids issues with toggleOnTrue/isScheduled through WrapperCommand.
     controller.leftBumper()
-        .toggleOnTrue(new ShootOnTheMoveCommand(drivetrain, superstructure, 
-                () -> superstructure.getAimPoint())
+        .onTrue(Commands.runOnce(() -> {
+          autoAimEnabled = !autoAimEnabled;
+          SmartDashboard.putBoolean("Auto-Aim Active", autoAimEnabled);
+        }));
+
+    new Trigger(() -> autoAimEnabled)
+        .whileTrue(new ShootOnTheMoveCommand(drivetrain, superstructure,
+            () -> superstructure.getAimPoint())
             .ignoringDisable(true)
             .withName("OperatorControls.aimCommand"));
+
+    // ==================== AUTO-RPM FALLBACK ====================
+
+    // Left Trigger: Distance-based auto-RPM without turret auto-aim
+    // Shooter speed auto-adjusts based on distance to aim point.
+    // Turret stays under manual right-stick/D-pad control.
+    // Use this as a fallback when full auto-aim (left bumper) is broken.
+    controller.leftTrigger(ControllerConstants.kTriggerThreshold)
+        .whileTrue(Commands.run(() -> {
+          Translation3d target = superstructure.getAimPoint();
+          double distance = drivetrain.getPose().getTranslation()
+              .getDistance(new Translation2d(target.getX(), target.getY()));
+          distance = Math.max(2.0, Math.min(12.0, distance));
+          double rpm = ShootOnTheMoveCommand.SHOOTING_SPEED_BY_DISTANCE.get(distance);
+          superstructure.shooter.setTargetSpeed(RPM.of(rpm));
+          SmartDashboard.putNumber("Auto-RPM/DistanceM", distance);
+          SmartDashboard.putNumber("Auto-RPM/TargetRPM", rpm);
+        }, superstructure.shooter)
+        .finallyDo(() -> superstructure.shooter.setTargetSpeed(RPM.of(0)))
+        .withName("OperatorControls.autoRPM"));
   }
   
   /**

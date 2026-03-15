@@ -123,10 +123,12 @@ public class ShootOnTheMoveCommand extends Command {
       correctiveVector = new Translation2d();
       Logger.recordOutput("ShootOnTheMove/LeadDeadbandActive", true);
     } else {
+      // X/Y scale factors were tuned empirically: Y=0.5 accounts for the
+      // robot's tendency to overshoot laterally at high speeds.
       double leadCompensationScaleX = 1.0;
       double leadCompensationScaleY = 0.5;
       correctiveVector = new Translation2d(
-          robotVelocity.vxMetersPerSecond * timeOfFlight * leadCompensationScaleX, 
+          robotVelocity.vxMetersPerSecond * timeOfFlight * leadCompensationScaleX,
           robotVelocity.vyMetersPerSecond * timeOfFlight * leadCompensationScaleY)
           .unaryMinus();
       Logger.recordOutput("ShootOnTheMove/LeadDeadbandActive", false);
@@ -229,9 +231,8 @@ public class ShootOnTheMoveCommand extends Command {
   }
 
   // meters, seconds (time of flight lookup for lead compensation)
-  // CA26 values: 1m=1.0s, 4.86m=1.5s — sparse, needs more data points
+  // CA26 values: 4.86m=1.5s — extended with linear estimates. Minimum distance is 2.0m (clamped above).
   private static final InterpolatingDoubleTreeMap TIME_OF_FLIGHT_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(1.0, 1.0),
       Map.entry(2.0, 1.1),
       Map.entry(3.0, 1.2),
       Map.entry(4.0, 1.35),
@@ -245,7 +246,7 @@ public class ShootOnTheMoveCommand extends Command {
   // Based on CA26 values: 2m=2700, 3m=3000, 4m=3300, 4.86m=3750 RPM
   // Extended with interpolated estimates for longer distances
   // With fixed hood at 55°, flywheel speed is the only trajectory control
-  private static final InterpolatingDoubleTreeMap SHOOTING_SPEED_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
+  public static final InterpolatingDoubleTreeMap SHOOTING_SPEED_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
       Map.entry(2.0, 2700.0),   // CA26 data point
       Map.entry(3.0, 3000.0),   // CA26 data point
       Map.entry(4.0, 3300.0),   // CA26 data point

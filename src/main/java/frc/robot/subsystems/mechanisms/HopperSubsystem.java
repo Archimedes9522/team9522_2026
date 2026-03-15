@@ -110,35 +110,6 @@ public class HopperSubsystem extends SubsystemBase {
     return hopper.set(0).withName("Hopper.Stop");
   }
 
-  // ==================== GETTERS ====================
-
-  /**
-   * Checks if a ball is at the entry sensor.
-   * 
-   * @return Always false (no sensors installed)
-   */
-  public boolean hasBallAtEntry() {
-    return false;
-  }
-
-  /**
-   * Checks if a ball is at the exit sensor (ready to feed to shooter).
-   * 
-   * @return Always false (no sensors installed)
-   */
-  public boolean hasBallAtExit() {
-    return false;
-  }
-
-  /**
-   * Checks if the hopper has any balls.
-   * 
-   * @return Always false (no sensors installed)
-   */
-  public boolean hasBall() {
-    return false;
-  }
-
   // ==================== PERIODIC ====================
 
   @Override

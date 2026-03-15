@@ -101,9 +101,11 @@ public final class AutoCommands {
             () -> superstructure.getAimPoint())
             .withName("Auto.enableAutoAim"));
 
-    // Disable auto-aim (cancels the ShootOnTheMoveCommand)
+    // Disable auto-aim — requires turret/shooter/hood so the scheduler interrupts
+    // any running ShootOnTheMoveCommand (which requires the same subsystems).
     NamedCommands.registerCommand("disableAutoAim",
-        Commands.runOnce(() -> {}).withName("Auto.disableAutoAim"));
+        Commands.runOnce(() -> {}, superstructure.turret, superstructure.shooter, superstructure.hood)
+            .withName("Auto.disableAutoAim"));
 
     // ==================== SHOOTING — AIM AT HUB ====================
     // Aim the turret at the alliance hub and spin up — stationary shot preparation
