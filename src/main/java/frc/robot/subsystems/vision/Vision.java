@@ -29,6 +29,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.vision.VisionIO.PoseObservationType;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -57,25 +58,30 @@ public class Vision extends SubsystemBase {
   
   /** Callback to send accepted vision measurements to the drive subsystem */
   private final VisionConsumer consumer;
-  
+
+  /** Supplier for current robot heading from odometry (used to reject flipped vision poses) */
+  private final Supplier<Rotation2d> headingSupplier;
+
   /** Array of camera IO interfaces (one per camera) */
   private final VisionIO[] io;
-  
+
   /** Array of input objects for each camera (populated by IO, logged by AdvantageKit) */
   private final VisionIOInputsAutoLogged[] inputs;
-  
+
   /** Alerts that appear in DriverStation when cameras disconnect */
   private final Alert[] disconnectedAlerts;
 
   /**
    * Creates a new Vision subsystem.
-   * 
+   *
    * @param consumer Callback function that receives accepted pose observations.
    *                 Typically SwerveSubsystem::addVisionMeasurement
+   * @param headingSupplier Supplier for current odometry heading (used to reject flipped vision poses)
    * @param io One or more VisionIO implementations (one per camera)
    */
-  public Vision(VisionConsumer consumer, VisionIO... io) {
+  public Vision(VisionConsumer consumer, Supplier<Rotation2d> headingSupplier, VisionIO... io) {
     this.consumer = consumer;
+    this.headingSupplier = headingSupplier;
     this.io = io;
 
     // Create an inputs object for each camera
@@ -160,11 +166,11 @@ public class Vision extends SubsystemBase {
         boolean rejectPose =
             // Must see at least one tag
             observation.tagCount() == 0
-            
+
             // Single-tag observations with high ambiguity are unreliable
             // (Multi-tag observations are inherently more accurate)
             || (observation.tagCount() == 1 && observation.ambiguity() > maxAmbiguity)
-            
+
             // Z coordinate should be near 0 (robot is on the floor)
             // Large Z values indicate a bad solve
             || Math.abs(observation.pose().getZ()) > maxZError
@@ -174,7 +180,16 @@ public class Vision extends SubsystemBase {
             || observation.pose().getX() < 0.0
             || observation.pose().getX() > aprilTagLayout.getFieldLength()
             || observation.pose().getY() < 0.0
-            || observation.pose().getY() > aprilTagLayout.getFieldWidth();
+            || observation.pose().getY() > aprilTagLayout.getFieldWidth()
+
+            // Reject single-tag observations whose heading differs too much from odometry.
+            // Single-tag PnP has an inherent 180° ambiguity — the wrong solution sneaks
+            // through the ambiguity filter and flips the pose estimator's heading, which
+            // inverts field-relative driving for the driver.
+            || (observation.tagCount() == 1
+                && Math.abs(
+                    observation.pose().toPose2d().getRotation()
+                        .minus(headingSupplier.get()).getDegrees()) > maxHeadingError);
 
         // Log all poses (for debugging in AdvantageScope)
         robotPoses.add(observation.pose());
@@ -199,13 +214,15 @@ public class Vision extends SubsystemBase {
         double stdDevFactor =
             Math.pow(observation.averageTagDistance(), 2.0) / observation.tagCount();
         double linearStdDev = linearStdDevBaseline * stdDevFactor;
-        double angularStdDev = angularStdDevBaseline * stdDevFactor;
-        
+        // Always set angular std dev to infinity so the gyro fully owns heading.
+        // Vision only corrects XY position — this matches our 2025 behavior where
+        // field-relative driving used raw gyro and was never affected by vision.
+        double angularStdDev = Double.MAX_VALUE;
+
         // Apply MegaTag 2 multipliers if applicable
         // (MegaTag 2 is more stable for position but has no rotation data)
         if (observation.type() == PoseObservationType.MEGATAG_2) {
           linearStdDev *= linearStdDevMegatag2Factor;
-          angularStdDev *= angularStdDevMegatag2Factor;
         }
         
         // Apply per-camera trust factors

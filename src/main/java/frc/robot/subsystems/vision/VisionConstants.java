@@ -128,7 +128,7 @@ public class VisionConstants {
    * Ambiguity measures how confident PhotonVision is in the pose.
    * Lower = stricter filtering. Range: 0.0 (perfect) to 1.0 (very uncertain)
    */
-  public static double maxAmbiguity = 0.3;
+  public static double maxAmbiguity = 0.15;
   
   /**
    * Maximum allowable Z-coordinate error in meters.
@@ -136,6 +136,14 @@ public class VisionConstants {
    * Large Z values indicate a bad pose estimate.
    */
   public static double maxZError = 0.75;
+
+  /**
+   * Maximum allowable heading difference (degrees) between a single-tag vision
+   * observation and current odometry heading. Single-tag SolvePnP has an inherent
+   * 180° ambiguity — the wrong solution can flip field-relative driving.
+   * Observations with heading error above this threshold are rejected.
+   */
+  public static double maxHeadingError = 45.0;
 
   // === STANDARD DEVIATION CONFIGURATION ===
   // Standard deviations tell the pose estimator how much to trust vision measurements.
@@ -145,8 +153,13 @@ public class VisionConstants {
   /** Baseline XY position uncertainty in meters (for 1 tag at 1 meter) */
   public static double linearStdDevBaseline = 0.02;
   
-  /** Baseline rotation uncertainty in radians (for 1 tag at 1 meter) */
-  public static double angularStdDevBaseline = 0.06;
+  /**
+   * Baseline rotation uncertainty in radians (for 1 tag at 1 meter).
+   * Set high so the gyro dominates heading — vision has ~100-200ms of latency
+   * which causes field-relative controls to feel laggy during rotation if
+   * vision is trusted too much. Vision still slowly corrects gyro drift over time.
+   */
+  public static double angularStdDevBaseline = 0.5;
 
     /**
      * Enable verbose per-camera and summary pose logging in Vision.

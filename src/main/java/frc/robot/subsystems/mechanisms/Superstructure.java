@@ -50,7 +50,7 @@ public class Superstructure extends SubsystemBase {
 
   // === TOLERANCE VALUES ===
   private static final AngularVelocity SHOOTER_TOLERANCE = RPM.of(100);
-  private static final Angle TURRET_TOLERANCE = Degrees.of(1);
+  private static final Angle TURRET_TOLERANCE = Degrees.of(3);
   private static final Angle HOOD_TOLERANCE = Degrees.of(2);
 
   // === READINESS TRIGGERS ===

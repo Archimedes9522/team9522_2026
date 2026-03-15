@@ -158,6 +158,7 @@ public class RobotContainer {
                         case REAL:
                                 m_vision = new Vision(
                                         m_robotDrive::addVisionMeasurement,
+                                        m_robotDrive::getRotation,
                                         new VisionIOPhotonVision(camera0Name, robotToCamera0),
                                         new VisionIO() {});
                                 break;
@@ -165,8 +166,9 @@ public class RobotContainer {
                         case SIM:
                                 m_vision = new Vision(
                                         m_robotDrive::addVisionMeasurement,
+                                        m_robotDrive::getRotation,
                                         new VisionIOPhotonVisionSim(
-                                                camera0Name, 
+                                                camera0Name,
                                                 robotToCamera0,
                                                 m_robotDrive::getPose),
                                         new VisionIO() {});
@@ -175,6 +177,7 @@ public class RobotContainer {
                         default:
                                 m_vision = new Vision(
                                         m_robotDrive::addVisionMeasurement,
+                                        m_robotDrive::getRotation,
                                         new VisionIO() {},
                                         new VisionIO() {});
                                 break;
