@@ -36,19 +36,7 @@ import frc.robot.util.maplesim.Arena2026Rebuilt;
 
 /**
  * Main Robot class - the entry point for all robot code.
- * 
- * This extends LoggedRobot (from AdvantageKit) instead of TimedRobot for enhanced logging.
- * AdvantageKit provides:
- * - Deterministic replay: Re-run matches exactly from log files
- * - Automatic logging: All inputs/outputs recorded for debugging
- * - NT4 publishing: Real-time data to dashboard tools
- * 
- * Robot Lifecycle:
- * 1. Constructor: Called once when robot code starts
- * 2. robotPeriodic(): Called every 20ms regardless of mode
- * 3. xxxInit(): Called once when entering a mode (auto, teleop, etc.)
- * 4. xxxPeriodic(): Called every 20ms while in that mode
- * 5. xxxExit(): Called once when leaving a mode
+ * Extends LoggedRobot for enhanced logging and deterministic replay.
  */
 public class Robot extends LoggedRobot {
   /** The currently scheduled autonomous command */
@@ -206,15 +194,7 @@ public class Robot extends LoggedRobot {
     }
   }
 
-  @Override
-  public void autonomousPeriodic() {
-    // Commands run automatically via CommandScheduler - nothing needed here
-  }
 
-  @Override
-  public void autonomousExit() {
-    // comingFromAuto stays true - teleop will check it
-  }
 
   /** Called once when teleop mode starts */
   @Override

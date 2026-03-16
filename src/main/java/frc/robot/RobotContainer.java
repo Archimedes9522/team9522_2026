@@ -23,7 +23,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ControllerConstants;
-import frc.robot.commands.AutoCommands;
+import frc.robot.commands.autos.AutoCommands;
 import frc.robot.controls.DriverControls;
 import frc.robot.controls.OperatorControls;
 import frc.robot.controls.PoseControls;
@@ -41,35 +41,15 @@ import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 
 /**
- * RobotContainer is where we define all subsystems, commands, and button bindings.
- * This follows the "declarative" Command-based paradigm where we declare WHAT the robot
- * should do, not HOW (the subsystems handle the how).
- * 
- * <p>Key concepts:
- * <ul>
- *   <li>Subsystems: Hardware abstractions (drive, vision, etc.)</li>
- *   <li>Commands: Actions the robot performs (drive, auto routines, etc.)</li>
- *   <li>Triggers: Button bindings that activate commands</li>
- * </ul>
- * 
- * <p>Controller bindings are handled by the controls package:
- * <ul>
- *   <li>{@link DriverControls} - Driver controller (port 0)</li>
- *   <li>{@link OperatorControls} - Operator controller (port 1)</li>
- * </ul>
+ * RobotContainer manages all subsystems, commands, and controller bindings.
  */
 public class RobotContainer {
-        // ==================== SUBSYSTEMS ====================
-        // Subsystems are created here and persist for the entire robot lifetime.
-        // They register themselves with the CommandScheduler automatically.
         
         /** YAGSL-based swerve drive subsystem - handles all driving and odometry */
         public final SwerveSubsystem m_robotDrive = new SwerveSubsystem();
         
         // ==================== MECHANISM SUBSYSTEMS ====================
         // Game-specific mechanisms for 2026 "Rebuilt" game.
-        // Only created when mechanisms are physically connected (kChassisOnly = false).
-        // When running chassis-only, these are null and mechanism commands are disabled.
         
         /** Dual flywheel shooter for launching FUEL */
         private final ShooterSubsystem m_shooter;
@@ -420,12 +400,12 @@ public class RobotContainer {
                 if (m_superstructure == null) return;
                 
                 if (isInAllianceZone()) {
-                        m_superstructure.setAimPoint(Constants.AimPoints.getAllianceHubPosition());
+                        m_superstructure.setAimPoint(FieldConstants.AimPoints.getAllianceHubPosition());
                 } else {
                         if (isOnAllianceOutpostSide()) {
-                                m_superstructure.setAimPoint(Constants.AimPoints.getAllianceOutpostPosition());
+                                m_superstructure.setAimPoint(FieldConstants.AimPoints.getAllianceOutpostPosition());
                         } else {
-                                m_superstructure.setAimPoint(Constants.AimPoints.getAllianceFarSidePosition());
+                                m_superstructure.setAimPoint(FieldConstants.AimPoints.getAllianceFarSidePosition());
                         }
                 }
         }
@@ -445,9 +425,9 @@ public class RobotContainer {
                 // Update aim point based on alliance (only if mechanisms exist)
                 if (m_superstructure != null) {
                         if (alliance == Alliance.Blue) {
-                                m_superstructure.setAimPoint(Constants.AimPoints.BLUE_HUB.value);
+                                m_superstructure.setAimPoint(FieldConstants.AimPoints.BLUE_HUB.value);
                         } else {
-                                m_superstructure.setAimPoint(Constants.AimPoints.RED_HUB.value);
+                                m_superstructure.setAimPoint(FieldConstants.AimPoints.RED_HUB.value);
                         }
                 }
                 

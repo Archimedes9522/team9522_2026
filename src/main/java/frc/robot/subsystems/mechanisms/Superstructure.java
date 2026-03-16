@@ -23,6 +23,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants;
+import frc.robot.FieldConstants;
 
 /**
  * Superstructure coordinates all shooting mechanisms for unified control.
@@ -66,7 +67,7 @@ public class Superstructure extends SubsystemBase {
 
   // === AIM POINT ===
   // Default to alliance-aware hub position (will be BLUE if on blue alliance)
-  private Translation3d aimPoint = Constants.AimPoints.getAllianceHubPosition();
+  private Translation3d aimPoint = FieldConstants.AimPoints.getAllianceHubPosition();
 
   /**
    * Creates a new Superstructure with all mechanism subsystems.
@@ -361,7 +362,7 @@ public class Superstructure extends SubsystemBase {
    * Call this when alliance changes or at the start of a match.
    */
   public void updateAimPointForAlliance() {
-    this.aimPoint = Constants.AimPoints.getAllianceHubPosition();
+    this.aimPoint = FieldConstants.AimPoints.getAllianceHubPosition();
   }
 
   /**

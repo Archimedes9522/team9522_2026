@@ -1,4 +1,4 @@
-package frc.robot.commands;
+package frc.robot.commands.mechanisms;
 
 import java.util.Map;
 import java.util.function.Supplier;
@@ -24,12 +24,10 @@ import frc.robot.Constants.TurretConstants;
 import frc.robot.subsystems.drive.SwerveSubsystem;
 
 /**
- * Command that continuously calculates and applies turret/shooter setpoints
+ * ShootOnTheMoveCommand continuously calculates and applies turret and shooter setpoints
  * to track a moving target while the robot drives.
  * 
- * <p>This command directly controls the turret, shooter, and hood subsystems
- * via the Superstructure. The hood uses a FIXED angle (like CA26) and
- * trajectory is controlled purely by varying shooter speed. It runs until cancelled.
+ * <p>Requirements: Turret, Shooter, Hood.
  */
 public class ShootOnTheMoveCommand extends Command {
   private final SwerveSubsystem drivetrain;

@@ -2,7 +2,7 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.commands;
+package frc.robot.commands.autos;
 
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.RPM;
@@ -10,9 +10,11 @@ import static edu.wpi.first.units.Units.RPM;
 import com.pathplanner.lib.auto.NamedCommands;
 
 import edu.wpi.first.wpilibj2.command.Commands;
-import frc.robot.Constants;
+
 import frc.robot.Constants.HoodConstants;
+import frc.robot.FieldConstants;
 import frc.robot.Robot;
+import frc.robot.commands.mechanisms.ShootOnTheMoveCommand;
 import frc.robot.controls.DriverControls;
 import frc.robot.subsystems.drive.SwerveSubsystem;
 import frc.robot.subsystems.mechanisms.Superstructure;
@@ -111,7 +113,7 @@ public final class AutoCommands {
     // Aim the turret at the alliance hub and spin up — stationary shot preparation
     NamedCommands.registerCommand("aimAtHub",
         new ShootOnTheMoveCommand(drivetrain, superstructure,
-            () -> Constants.AimPoints.getAllianceHubPosition())
+            () -> FieldConstants.AimPoints.getAllianceHubPosition())
             .withName("Auto.aimAtHub"));
 
     // ==================== TURRET PRESETS ====================

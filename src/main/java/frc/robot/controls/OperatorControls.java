@@ -17,7 +17,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ControllerConstants;
 import frc.robot.Constants.TurretConstants;
-import frc.robot.commands.ShootOnTheMoveCommand;
+import frc.robot.commands.mechanisms.ShootOnTheMoveCommand;
 import frc.robot.subsystems.drive.SwerveSubsystem;
 import frc.robot.subsystems.mechanisms.Superstructure;
 
