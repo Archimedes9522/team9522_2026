@@ -220,6 +220,7 @@ public class RobotContainer {
                 // Steps: 1) Select routine  2) Deploy  3) Test mode  4) Enable  5) Run full sequence
                 // 6) Disable  7) Download .wpilog from RIO  8) Open in WPILib SysId Tool
                 if (m_turret != null) {
+                        autoChooser.addOption("[Calibration] Turret Vernier", m_turret.calibrateVernierCommand());
                         autoChooser.addOption("[SysId] Turret", m_turret.sysId());
                 }
                 if (m_intake != null) {

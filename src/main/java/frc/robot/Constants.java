@@ -228,6 +228,18 @@ public final class Constants {
     /** Total gear reduction from motor to turret output */
     public static final double kGearRatio = 40.0;
 
+    /** DIO Channel for Vernier Encoder A (19t gear) */
+    public static final int kEncoderAChannel = 0;
+
+    /** DIO Channel for Vernier Encoder B (21t gear) */
+    public static final int kEncoderBChannel = 1;
+
+    /** Absolute offset for Encoder A [0.0, 1.0) when turret is at 0 degrees */
+    public static final double kEncoderAOffset = 0.0;
+
+    /** Absolute offset for Encoder B [0.0, 1.0) when turret is at 0 degrees */
+    public static final double kEncoderBOffset = 0.0;
+
     /** Soft limit for turret rotation in degrees (positive = clockwise) */
     public static final double kMaxAngleDegrees = 80.0;
 

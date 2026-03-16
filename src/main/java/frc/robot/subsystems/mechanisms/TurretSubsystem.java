@@ -30,6 +30,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -78,6 +79,10 @@ public class TurretSubsystem extends SubsystemBase {
   private final SmartMotorController motorController;
   private final Pivot turret;
 
+  // === ABSOLUTE ENCODERS (VERNIER) ===
+  private final DutyCycleEncoder encoderA; // 19t gear
+  private final DutyCycleEncoder encoderB; // 21t gear
+
   /**
    * Creates a new TurretSubsystem.
    */
@@ -93,6 +98,10 @@ public class TurretSubsystem extends SubsystemBase {
     sparkConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
     // DO NOT set encoder.inverted() for primary encoder in brushless mode — it's determined by motor inversion
     spark.configure(sparkConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+    // Initialize Vernier Encoders
+    encoderA = new DutyCycleEncoder(TurretConstants.kEncoderAChannel);
+    encoderB = new DutyCycleEncoder(TurretConstants.kEncoderBChannel);
 
     // Configure YAMS SmartMotorController — all values matching CA26
     SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
@@ -201,6 +210,57 @@ public class TurretSubsystem extends SubsystemBase {
   }
 
   /**
+   * Reads raw absolute fractions from Encoder A and B and prints them.
+   * Copy the output of this command into Constants.java offset values when the turret is perfectly centered at 0.
+   */
+  public Command calibrateVernierCommand() {
+    return Commands.runOnce(() -> {
+      System.out.println("=============== TURRET VERNIER CALIBRATION ===============");
+      System.out.println("Set kEncoderAOffset = " + encoderA.get());
+      System.out.println("Set kEncoderBOffset = " + encoderB.get());
+      System.out.println("==========================================================");
+    }).ignoringDisable(true).withName("Turret.CalibrateVernier");
+  }
+
+  /**
+   * Computes the absolute turret angle perfectly utilizing the 19t/21t coprime Vernier mechanism.
+   */
+  public double getAbsoluteTurretAngleDegrees() {
+      // 1. Read absolute fraction [0.0, 1.0) from both encoders
+      double rawA = encoderA.get();
+      double rawB = encoderB.get();
+
+      // 2. Apply calibration offsets
+      // Adding 1.0 before modulus ensures we don't accidentally modulo a negative number incorrectly
+      double a = (rawA - TurretConstants.kEncoderAOffset + 1.0) % 1.0;
+      double b = (rawB - TurretConstants.kEncoderBOffset + 1.0) % 1.0;
+
+      // 3. Calculate phase difference. 
+      double delta = (a - b + 1.0) % 1.0;
+
+      // 4. Compute coarse turret position (in teeth limit 399)
+      // 19 * 21 = 399 total teeth before phase repetition
+      double teethCoarse = delta * (399.0 / 2.0);
+
+      // 5. Calculate integer rotations (K) of Encoder A
+      long kA = Math.round((teethCoarse / 19.0) - a);
+
+      // 6. Calculate fine turret position in teeth based off the high-res Encoder A reading
+      double teethFine = 19.0 * (kA + a);
+
+      // 7. Convert from teeth to final degrees (Turret has 200 teeth)
+      // Map back to [-180, 180] bound
+      double angleDegrees = teethFine * (360.0 / 200.0);
+      
+      // Normalize to [-180, 180]
+      if (angleDegrees > 180.0) {
+          angleDegrees -= 360.0;
+      }
+
+      return angleDegrees;
+  }
+
+  /**
    * Runs system identification for tuning.
    * 
    * @return SysId command sequence
@@ -247,9 +307,17 @@ public class TurretSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     turret.updateTelemetry();
+    
+    // Seed the internal NEO spark encoder to prevent drift, utilizing our infinite-res absolute vernier position.
+    // The NEO Encoder setPosition() expects mechanism Rotations according to the SparkMaxConfig, 
+    // or Motor Rotations if gear ratio isn't set. Since YAMS manages gearing outside of the SparkMax API generally:
+    // We pass mechanism rotations: angle / 360 * Total Gear Ratio -> 40.0
+    double absAngleDeg = getAbsoluteTurretAngleDegrees();
+    spark.getEncoder().setPosition((absAngleDeg / 360.0) * TurretConstants.kGearRatio);
 
     // Log turret pose for AdvantageScope 3D visualization
     Logger.recordOutput("Turret/AngleDegrees", getRawAngle().in(Degrees));
+    Logger.recordOutput("Turret/AbsoluteAngleDeg", absAngleDeg);
     Logger.recordOutput("ASCalibration/FinalComponentPoses", new Pose3d[] {
         new Pose3d(
             TURRET_TRANSLATION,
