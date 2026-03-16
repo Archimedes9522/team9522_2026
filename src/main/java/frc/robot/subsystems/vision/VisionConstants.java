@@ -179,18 +179,5 @@ public class VisionConstants {
                 1.0  // Camera 1 (front) - fully trusted
       };
 
-  // === MEGATAG 2 SPECIFIC SETTINGS ===
-  // MegaTag 2 is a Limelight-specific mode that uses multiple tags for more stable estimates
-  
-  /**
-   * Linear std dev multiplier for MegaTag 2 observations.
-   * MegaTag 2 is more stable, so we trust it more (lower factor).
-   */
-  public static double linearStdDevMegatag2Factor = 0.5;
-  
-  /**
-   * Angular std dev for MegaTag 2.
-   * MegaTag 2 doesn't provide reliable rotation, so we ignore it (infinite uncertainty).
-   */
-  public static double angularStdDevMegatag2Factor = Double.POSITIVE_INFINITY;
+
 }

@@ -104,12 +104,6 @@ public interface VisionIO {
    * affects how much we trust each observation.
    */
   public static enum PoseObservationType {
-    /** Limelight MegaTag 1 - single tag 3D solve */
-    MEGATAG_1,
-    
-    /** Limelight MegaTag 2 - multi-tag, but no rotation data */
-    MEGATAG_2,
-    
     /** PhotonVision pose estimation (single or multi-tag) */
     PHOTONVISION
   }

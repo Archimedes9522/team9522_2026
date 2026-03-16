@@ -125,10 +125,9 @@ public class SwerveSubsystem extends SubsystemBase {
     
     // Correct for skew that gets worse as angular velocity increases
     // This compensates for the robot drifting while rotating at speed
-    // DISABLED in simulation - causes pose glitching/jumping in sim
-    if (!RobotBase.isSimulation()) {
-      swerveDrive.setAngularVelocityCompensation(true, true, 0.1);
-    }
+    // The second parameter `false` tells YAGSL to use WPILib's native ChassisSpeeds.discretize()
+    // rather than the legacy YAGSL skew math which had a sign error causing worse arcing.
+    swerveDrive.setAngularVelocityCompensation(true, false, 0.02);
     
     // Cosine compensation improves accuracy at high angles, but causes discrepancies in simulation
     swerveDrive.setCosineCompensator(!RobotBase.isSimulation());
@@ -575,22 +574,11 @@ public class SwerveSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     // YAGSL handles odometry updates internally
+    // YAGSL's TelemetryVerbosity.HIGH already publishes module states, chassis speeds,
+    // and gyro data — only log what YAGSL doesn't provide.
     
     // Log robot pose for AdvantageScope 3D visualization
     Logger.recordOutput("Odometry/Robot", getPose());
-    Logger.recordOutput("Odometry/Robot3d", getPose3d());
-    
-    // Log module states for visualization
-    SwerveModuleState[] states = getModuleStates();
-    Logger.recordOutput("SwerveStates/Measured", states);
-    
-    // Log chassis speeds
-    ChassisSpeeds speeds = getRobotRelativeSpeeds();
-    Logger.recordOutput("SwerveStates/VelocityX", speeds.vxMetersPerSecond);
-    Logger.recordOutput("SwerveStates/VelocityY", speeds.vyMetersPerSecond);
-    Logger.recordOutput("SwerveStates/AngularVelocity", Math.toDegrees(speeds.omegaRadiansPerSecond));
-    
-    // Log heading
     Logger.recordOutput("Odometry/Heading", getHeading());
   }
 }

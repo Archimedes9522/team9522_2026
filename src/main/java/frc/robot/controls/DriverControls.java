@@ -10,6 +10,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -97,7 +98,16 @@ public class DriverControls {
             // Left stick X = strafe (negated to match driver expectations - pushing right gives negative value)
             () -> controller.getLeftX() * -1)
         // Right stick X = rotation
-        .withControllerRotationAxis(() -> controller.getRightX() * -1)
+        .withControllerRotationAxis(() -> {
+            if (RobotBase.isSimulation()) {
+                double rot = controller.getRightX();
+                if (Math.abs(rot) < 0.05) {
+                    rot = controller.getRawAxis(2); // Fallback to E/R keys in sim
+                }
+                return rot * -1;
+            }
+            return controller.getRightX() * -1;
+        })
         // Field-relative driving (robot moves relative to field, not robot)
         .robotRelative(false)
         // Flip controls for red alliance (driver station on opposite side)
@@ -113,7 +123,16 @@ public class DriverControls {
             drivetrain.getSwerveDrive(),
             () -> controller.getLeftY() * -1,
             () -> controller.getLeftX() * -1)
-        .withControllerRotationAxis(() -> controller.getRightX() * -1)
+        .withControllerRotationAxis(() -> {
+            if (RobotBase.isSimulation()) {
+                double rot = controller.getRightX();
+                if (Math.abs(rot) < 0.05) {
+                    rot = controller.getRawAxis(2); // Fallback to E/R keys in sim
+                }
+                return rot * -1;
+            }
+            return controller.getRightX() * -1;
+        })
         .robotRelative(false)
         .allianceRelativeControl(true)
         // Slow mode: 50% of normal speed for precision

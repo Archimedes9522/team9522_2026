@@ -170,7 +170,7 @@ public class Robot extends LoggedRobot {
     CommandsLogging.logCommands();
     
     // Log field simulation data for AdvantageScope 3D visualization
-    Logger.recordOutput("FieldSimulation/RobotPose", m_robotContainer.getRobotPose());
+    // Note: Robot pose is logged as "Odometry/Robot" in SwerveSubsystem.periodic()
     Logger.recordOutput("FieldSimulation/AimDirection", m_robotContainer.getAimDirection());
     if (m_robotContainer.getSuperstructure() != null) {
       Logger.recordOutput("FieldSimulation/AimTarget", 
@@ -252,180 +252,42 @@ public class Robot extends LoggedRobot {
 
   /** Initialize SmartDashboard/Shuffleboard widgets */
   public void setupSmartDashboard() {
-    // === FIELD VISUALIZATION ===
-    SmartDashboard.putData("Field", m_field);           // Field visualization with robot pose
-    
-    // === SYSTEM STATUS ===
-    SmartDashboard.putData("PDH", m_pdh);               // Power distribution widget
-    SmartDashboard.putData("Scheduler", CommandScheduler.getInstance()); // Running commands
-    
-    // === ROBOT POSE ===
-    SmartDashboard.putNumber("Robot X (m)", 0.0);
-    SmartDashboard.putNumber("Robot Y (m)", 0.0);
-    SmartDashboard.putNumber("Robot Heading (deg)", 0.0);
-    
-    // === ROBOT VELOCITY ===
-    SmartDashboard.putNumber("Robot Speed (m/s)", 0.0);
-    SmartDashboard.putNumber("Robot Vx (m/s)", 0.0);
-    SmartDashboard.putNumber("Robot Vy (m/s)", 0.0);
-    SmartDashboard.putNumber("Robot Omega (deg/s)", 0.0);
-    
-    // === GYRO DATA ===
-    SmartDashboard.putNumber("Gyro Angle (deg)", 0);
-    SmartDashboard.putNumber("Gyro Pitch (deg)", 0);
-    SmartDashboard.putNumber("Gyro Roll (deg)", 0);
-    
-    // === VISION STATUS ===
-    SmartDashboard.putNumber("Vision Tags Seen", 0);
-    SmartDashboard.putBoolean("Vision Connected", false);
-
-    // === ALERTS / FLAGS ===
+    SmartDashboard.putData("Field", m_field);
+    SmartDashboard.putData("PDH", m_pdh);
+    SmartDashboard.putData("Scheduler", CommandScheduler.getInstance());
     SmartDashboard.putBoolean("Chassis Only", Constants.kChassisOnly);
-    
-    // === MECHANISM STATUS (only when mechanisms are available) ===
-    if (m_robotContainer.getSuperstructure() != null) {
-      SmartDashboard.putNumber("Turret Angle (deg)", 0.0);
-      SmartDashboard.putNumber("Shooter RPM", 0.0);
-      SmartDashboard.putBoolean("Shooter Ready", false);
-      SmartDashboard.putBoolean("Auto-Aim Active", false);
-    }
-    
-    // === CONTROL BUTTONS ===
-    SmartDashboard.putBoolean("Reset Pose", false);     // Button to reset odometry
-    SmartDashboard.putBoolean("Lock Wheels", false);    // Button to lock wheels in X
-    SmartDashboard.putBoolean("Zero Gyro", false);      // Button to zero gyro heading
-
-    // === ELASTIC DASHBOARD GROUP (prefix: Elastic/) ===
-    SmartDashboard.putNumber("Elastic/Robot/X", 0.0);
-    SmartDashboard.putNumber("Elastic/Robot/Y", 0.0);
-    SmartDashboard.putNumber("Elastic/Robot/HeadingDeg", 0.0);
-    SmartDashboard.putNumber("Elastic/Robot/SpeedMps", 0.0);
-    SmartDashboard.putBoolean("Elastic/ChassisOnly", Constants.kChassisOnly);
-    SmartDashboard.putBoolean("Elastic/Vision/Connected", false);
-    SmartDashboard.putNumber("Elastic/Vision/Tags", 0.0);
-    SmartDashboard.putNumber("Elastic/Shooter/RPM", 0.0);
-    SmartDashboard.putBoolean("Elastic/Shooter/Ready", false);
-    SmartDashboard.putNumber("Elastic/Turret/AngleDeg", 0.0);
-    SmartDashboard.putBoolean("Elastic/AutoAim/Active", false);
-    SmartDashboard.putNumber("Elastic/MatchTime", 0.0);
-    SmartDashboard.putNumber("Elastic/Robot/OmegaDegPerSec", 0.0);
-    SmartDashboard.putNumber("Elastic/Power/Voltage", 0.0);
-    SmartDashboard.putNumber("Elastic/Power/CurrentA", 0.0);
-    SmartDashboard.putBoolean("Elastic/Intake/Deployed", false);
-    SmartDashboard.putNumber("Elastic/Hood/AngleDeg", 0.0);
-    SmartDashboard.putNumber("Elastic/Aim/DistanceM", 0.0);
   }
 
   /** Update SmartDashboard values every loop */
   private void updateSmartDashboard() {
-    // === MATCH INFO ===
-    SmartDashboard.putNumber("Match Time", Timer.getMatchTime());
-    SmartDashboard.putNumber("PDH Voltage", m_pdh.getVoltage());
-    SmartDashboard.putNumber("PDH Current (A)", m_pdh.getTotalCurrent());
-    SmartDashboard.putBoolean("Chassis Only", Constants.kChassisOnly);
-
-    // === ROBOT POSE ===
     var robotPose = m_robotContainer.m_robotDrive.getPose();
     m_field.setRobotPose(robotPose);
-    SmartDashboard.putNumber("Robot X (m)", robotPose.getX());
-    SmartDashboard.putNumber("Robot Y (m)", robotPose.getY());
-    SmartDashboard.putNumber("Robot Heading (deg)", robotPose.getRotation().getDegrees());
+
+    // All pose/velocity/module data is logged via AdvantageKit Logger in
+    // SwerveSubsystem.periodic() and robotPeriodic(). Only publish what
+    // the Elastic driver dashboard actually needs here.
+    SmartDashboard.putNumber("Elastic/MatchTime", Timer.getMatchTime());
     SmartDashboard.putNumber("Elastic/Robot/X", robotPose.getX());
     SmartDashboard.putNumber("Elastic/Robot/Y", robotPose.getY());
     SmartDashboard.putNumber("Elastic/Robot/HeadingDeg", robotPose.getRotation().getDegrees());
-    
-    // === ROBOT VELOCITY ===
     var chassisSpeeds = m_robotContainer.m_robotDrive.getRobotRelativeSpeeds();
-    double robotSpeed = Math.hypot(chassisSpeeds.vxMetersPerSecond, chassisSpeeds.vyMetersPerSecond);
-    SmartDashboard.putNumber("Robot Speed (m/s)", robotSpeed);
-    SmartDashboard.putNumber("Robot Vx (m/s)", chassisSpeeds.vxMetersPerSecond);
-    SmartDashboard.putNumber("Robot Vy (m/s)", chassisSpeeds.vyMetersPerSecond);
-    SmartDashboard.putNumber("Robot Omega (deg/s)", Math.toDegrees(chassisSpeeds.omegaRadiansPerSecond));
-    SmartDashboard.putNumber("Elastic/Robot/SpeedMps", robotSpeed);
-    SmartDashboard.putNumber("Elastic/Robot/OmegaDegPerSec", Math.toDegrees(chassisSpeeds.omegaRadiansPerSecond));
-    SmartDashboard.putNumber("Elastic/MatchTime", Timer.getMatchTime());
+    SmartDashboard.putNumber("Elastic/Robot/SpeedMps",
+        Math.hypot(chassisSpeeds.vxMetersPerSecond, chassisSpeeds.vyMetersPerSecond));
     SmartDashboard.putNumber("Elastic/Power/Voltage", m_pdh.getVoltage());
-    SmartDashboard.putNumber("Elastic/Power/CurrentA", m_pdh.getTotalCurrent());
-    SmartDashboard.putNumber("Gyro Angle (deg)", m_robotContainer.m_robotDrive.getHeading());
-    SmartDashboard.putNumber("Gyro Pitch (deg)", 0); // YAGSL manages gyro internally
-    SmartDashboard.putNumber("Gyro Roll (deg)", 0);
-    
-    // === MECHANISM STATUS (only when mechanisms are available) ===
+
     var superstructure = m_robotContainer.getSuperstructure();
     if (superstructure != null) {
-      double turretAngleDeg = superstructure.getTurretAngle().in(edu.wpi.first.units.Units.Degrees);
-      double shooterRpm = superstructure.getShooterSpeed().in(edu.wpi.first.units.Units.RPM);
-      boolean shooterReady = superstructure.isReadyToShoot();
-
-      SmartDashboard.putNumber("Turret Angle (deg)", turretAngleDeg);
-      SmartDashboard.putNumber("Shooter RPM", shooterRpm);
-      SmartDashboard.putBoolean("Shooter Ready", shooterReady);
-      SmartDashboard.putNumber("Elastic/Turret/AngleDeg", turretAngleDeg);
-      SmartDashboard.putNumber("Elastic/Shooter/RPM", shooterRpm);
-      SmartDashboard.putBoolean("Elastic/Shooter/Ready", shooterReady);
-      
-      // === INTAKE / HOPPER / HOOD STATUS ===
-      boolean intakeDeployed = superstructure.intake.isDeployed();
-      double hoodAngleDeg = superstructure.getHoodAngle().in(edu.wpi.first.units.Units.Degrees);
-      SmartDashboard.putBoolean("Elastic/Intake/Deployed", intakeDeployed);
-      SmartDashboard.putNumber("Elastic/Hood/AngleDeg", hoodAngleDeg);
-
-      // === AIM POINT (for debugging) ===
-      var aimPoint = m_robotContainer.getAimPoint();
-      SmartDashboard.putNumber("Aim X (m)", aimPoint.getX());
-      SmartDashboard.putNumber("Aim Y (m)", aimPoint.getY());
-      SmartDashboard.putNumber("Aim Z (m)", aimPoint.getZ());
-
-      // === DISTANCE TO TARGET ===
-      var robotPose2d = m_robotContainer.m_robotDrive.getPose();
-      double distanceToTarget = Math.hypot(
-          aimPoint.getX() - robotPose2d.getX(),
-          aimPoint.getY() - robotPose2d.getY());
-      SmartDashboard.putNumber("Elastic/Aim/DistanceM", distanceToTarget);
+      SmartDashboard.putNumber("Elastic/Turret/AngleDeg",
+          superstructure.getTurretAngle().in(edu.wpi.first.units.Units.Degrees));
+      SmartDashboard.putNumber("Elastic/Shooter/RPM",
+          superstructure.getShooterSpeed().in(edu.wpi.first.units.Units.RPM));
+      SmartDashboard.putBoolean("Elastic/Shooter/Ready", superstructure.isReadyToShoot());
+      SmartDashboard.putBoolean("Elastic/Intake/Deployed", superstructure.intake.isDeployed());
     }
 
-    // === VISION STATUS ===
-    boolean visionConnected = SmartDashboard.getBoolean("Vision Connected", false);
-    double visionTags = SmartDashboard.getNumber("Vision Tags Seen", 0.0);
-    SmartDashboard.putBoolean("Elastic/Vision/Connected", visionConnected);
-    SmartDashboard.putNumber("Elastic/Vision/Tags", visionTags);
-
-    // === FLAGS ===
-    SmartDashboard.putBoolean("Elastic/ChassisOnly", Constants.kChassisOnly);
-    boolean autoAimActive = SmartDashboard.getBoolean("Auto-Aim Active", false);
-    SmartDashboard.putBoolean("Elastic/AutoAim/Active", autoAimActive);
-
-    // === HANDLE DASHBOARD BUTTONS ===
-    // Reset Pose button
-    if (SmartDashboard.getBoolean("Reset Pose", false)) {
-      m_robotContainer.m_robotDrive.resetOdometry(new Pose2d());
-      SmartDashboard.putBoolean("Reset Pose", false);
-    }
-
-    // Lock Wheels button
-    if (SmartDashboard.getBoolean("Lock Wheels", false)) {
-      m_robotContainer.m_robotDrive.lock();
-      SmartDashboard.putBoolean("Lock Wheels", false);
-    }
-    
-    // Zero Gyro button
-    if (SmartDashboard.getBoolean("Zero Gyro", false)) {
-      m_robotContainer.m_robotDrive.zeroGyro();
-      SmartDashboard.putBoolean("Zero Gyro", false);
-    }
-
-    // === ALERTS ===
+    // Alerts
     chassisOnlyAlert.set(Constants.kChassisOnly);
     lowBatteryAlert.set(m_pdh.getVoltage() < 11.5);
-    visionDisconnectedAlert.set(!visionConnected);
-    visionNoTagsAlert.set(visionConnected && visionTags <= 0);
-    if (superstructure != null) {
-      shooterNotReadyAlert.set(!superstructure.isReadyToShoot());
-      autoAimInactiveAlert.set(!autoAimActive);
-    } else {
-      shooterNotReadyAlert.set(false);
-      autoAimInactiveAlert.set(false);
-    }
   }
 
   /**
@@ -510,17 +372,22 @@ public class Robot extends LoggedRobot {
     SimulatedArena.overrideInstance(new Arena2026Rebuilt(addRampCollider));
     m_arena = SimulatedArena.getInstance();
 
-    // Add the swerve drivetrain to the physics simulation
-    // YAGSL's SwerveDriveSimulation wraps the MapleSim drivetrain
+    // NOTE: YAGSL bundles its own relocated MapleSim under swervelib.simulation.ironmaple.*,
+    // which is a DIFFERENT class hierarchy from org.ironmaple.simulation.* used by Arena2026Rebuilt.
+    // YAGSL auto-registers the drivetrain with its own internal SimulatedArena and calls
+    // simulationPeriodic() during updateOdometry(), so drivetrain physics (translation, rotation,
+    // and gyro simulation) work independently of this arena.
+    //
+    // The Arena2026Rebuilt handles game pieces, field obstacles, hubs, and outposts in a separate
+    // physics world. Game piece-robot interactions (collisions, intake) won't work across the two
+    // worlds. To unify them, Arena2026Rebuilt would need to extend YAGSL's SimulatedArena instead
+    // of the standalone MapleSim's SimulatedArena.
     var swerveDrive = m_robotContainer.m_robotDrive.getSwerveDrive();
     var mapleSimDriveOpt = swerveDrive.getMapleSimDrive();
     if (mapleSimDriveOpt.isPresent()) {
-      // YAGSL handles drivetrain registration internally when using maple-sim
-      // The SwerveDriveSimulation is YAGSL's wrapper, not MapleSim's type directly
-      System.out.println("MapleSim: YAGSL SwerveDriveSimulation available");
-      System.out.println("MapleSim: Drivetrain type: " + mapleSimDriveOpt.get().getClass().getName());
+      System.out.println("MapleSim: YAGSL drivetrain simulation active (managed by YAGSL's internal SimulatedArena)");
     } else {
-      System.out.println("MapleSim: WARNING - No drivetrain simulation available. Running in simulation may have limited physics.");
+      System.out.println("MapleSim: WARNING - No drivetrain simulation available.");
     }
   }
 

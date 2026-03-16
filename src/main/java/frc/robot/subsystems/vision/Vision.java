@@ -26,7 +26,7 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.vision.VisionIO.PoseObservationType;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -214,16 +214,9 @@ public class Vision extends SubsystemBase {
         double stdDevFactor =
             Math.pow(observation.averageTagDistance(), 2.0) / observation.tagCount();
         double linearStdDev = linearStdDevBaseline * stdDevFactor;
-        // Always set angular std dev to infinity so the gyro fully owns heading.
-        // Vision only corrects XY position — this matches our 2025 behavior where
-        // field-relative driving used raw gyro and was never affected by vision.
-        double angularStdDev = Double.MAX_VALUE;
+        double angularStdDev = angularStdDevBaseline * stdDevFactor;
 
-        // Apply MegaTag 2 multipliers if applicable
-        // (MegaTag 2 is more stable for position but has no rotation data)
-        if (observation.type() == PoseObservationType.MEGATAG_2) {
-          linearStdDev *= linearStdDevMegatag2Factor;
-        }
+
         
         // Apply per-camera trust factors
         // (Some cameras may be more reliable than others)
