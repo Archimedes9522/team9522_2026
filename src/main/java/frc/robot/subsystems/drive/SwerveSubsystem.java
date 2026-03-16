@@ -12,7 +12,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
-import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.swerve.SwerveSetpoint;
 import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
@@ -124,10 +123,14 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive.setHeadingCorrection(false);
     
     // Correct for skew that gets worse as angular velocity increases
-    // This compensates for the robot drifting while rotating at speed
-    // The second parameter `false` tells YAGSL to use WPILib's native ChassisSpeeds.discretize()
-    // rather than the legacy YAGSL skew math which had a sign error causing worse arcing.
-    swerveDrive.setAngularVelocityCompensation(true, false, 0.02);
+    // CA26 used 0.1. However, because we are using a different IMU configuration (NavX), 
+    // the +0.1 coefficient amplified the skew by applying compensation backwards.
+    // Inverting the coefficient to -0.1 correctly negates the swerve drift.
+    //
+    // CRITICAL: YAGSL documentation explicitly warns that heading correction / angular
+    // velocity compensation CAUSES uncontrollable drift in simulation due to physics conflicts.
+    // It must be disabled when simulating!
+    swerveDrive.setAngularVelocityCompensation(!RobotBase.isSimulation(), !RobotBase.isSimulation(), -0.1);
     
     // Cosine compensation improves accuracy at high angles, but causes discrepancies in simulation
     swerveDrive.setCosineCompensator(!RobotBase.isSimulation());
