@@ -33,7 +33,19 @@ public final class FieldConstants {
     BLUE_OUTPOST(new Translation3d(4.0, 2.0, 0)),
     
     /** Blue alliance far side position - moved inward toward center */
-    BLUE_FAR_SIDE(new Translation3d(4.0, 6.0, 0));
+    BLUE_FAR_SIDE(new Translation3d(4.0, 6.0, 0)),
+
+    /** Red alliance safe station position - top corner */
+    RED_STATION_TOP(new Translation3d(15.04, 7.0, 0)),
+
+    /** Red alliance safe station position - bottom corner */
+    RED_STATION_BOTTOM(new Translation3d(15.04, 1.0, 0)),
+
+    /** Blue alliance safe station position - top corner */
+    BLUE_STATION_TOP(new Translation3d(1.5, 7.0, 0)),
+
+    /** Blue alliance safe station position - bottom corner */
+    BLUE_STATION_BOTTOM(new Translation3d(1.5, 1.0, 0));
 
     /** The 3D position of this aim point on the field */
     public final Translation3d value;
@@ -70,6 +82,26 @@ public final class FieldConstants {
       return DriverStation.getAlliance()
           .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_FAR_SIDE.value : BLUE_FAR_SIDE.value)
           .orElse(RED_FAR_SIDE.value);
+    }
+
+    /**
+     * Gets the top station corner position for the current alliance.
+     * @return Top station Translation3d for red or blue based on DriverStation alliance
+     */
+    public static Translation3d getAllianceStationTopPosition() {
+      return DriverStation.getAlliance()
+          .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_STATION_TOP.value : BLUE_STATION_TOP.value)
+          .orElse(RED_STATION_TOP.value);
+    }
+
+    /**
+     * Gets the bottom station corner position for the current alliance.
+     * @return Bottom station Translation3d for red or blue based on DriverStation alliance
+     */
+    public static Translation3d getAllianceStationBottomPosition() {
+      return DriverStation.getAlliance()
+          .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_STATION_BOTTOM.value : BLUE_STATION_BOTTOM.value)
+          .orElse(RED_STATION_BOTTOM.value);
     }
   }
 }

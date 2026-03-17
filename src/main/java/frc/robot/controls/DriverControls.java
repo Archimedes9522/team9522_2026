@@ -8,6 +8,9 @@ import static edu.wpi.first.units.Units.MetersPerSecond;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -15,11 +18,16 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.ControllerConstants;
+import frc.robot.FieldConstants;
 import frc.robot.Robot;
 import frc.robot.subsystems.drive.SwerveSubsystem;
 import frc.robot.subsystems.mechanisms.Superstructure;
 import frc.robot.subsystems.mechanisms.TurretSubsystem;
 import frc.robot.util.maplesim.RebuiltFuelOnFly;
+
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.path.PathConstraints;
+
 import org.ironmaple.simulation.SimulatedArena;
 import org.ironmaple.simulation.gamepieces.GamePieceProjectile;
 import org.littletonrobotics.junction.Logger;
@@ -170,7 +178,40 @@ public class DriverControls {
     // Red alliance: heading set to 180° (facing Blue wall)
     controller.start()
         .onTrue(drivetrain.zeroHeadingForAllianceCommand());
-    
+
+    // ==================== PATHFINDING BINDINGS ====================
+    // D-Pad Left: Pathfind to Top Driver Station Corner
+    // Uses Commands.defer to re-evaluate the alliance/target when the button is pressed
+    controller.povLeft().whileTrue(
+        Commands.defer(() -> {
+          var targetTranslation = FieldConstants.AimPoints.getAllianceStationTopPosition();
+          var isRed = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red;
+          // The turret is on the BACK of the robot. 
+          // To shoot at the Hub, the front of the robot must face the alliance wall.
+          // WPILib Field Coordinate System: 0° is facing the Red Wall, 180° is facing the Blue Wall.
+          // Blue robot -> Front faces 180° (Blue Wall) -> Back faces 0° (Red Wall/Blue Hub)
+          // Red robot -> Front faces 0° (Red Wall) -> Back faces 180° (Blue Wall/Red Hub)
+          var targetRotation = Rotation2d.fromDegrees(isRed ? 0.0 : 180.0);
+          return AutoBuilder.pathfindToPose(
+              new Pose2d(targetTranslation.getX(), targetTranslation.getY(), targetRotation),
+              new PathConstraints(3.0, 2.5, Units.degreesToRadians(540), Units.degreesToRadians(720)),
+              0.0);
+        }, java.util.Set.of(drivetrain))
+        .withName("DriverControls.pathfindTopCorner"));
+
+    // D-Pad Right: Pathfind to Bottom Driver Station Corner
+    controller.povRight().whileTrue(
+        Commands.defer(() -> {
+          var targetTranslation = FieldConstants.AimPoints.getAllianceStationBottomPosition();
+          var isRed = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red;
+          var targetRotation = Rotation2d.fromDegrees(isRed ? 0.0 : 180.0);
+          return AutoBuilder.pathfindToPose(
+              new Pose2d(targetTranslation.getX(), targetTranslation.getY(), targetRotation),
+              new PathConstraints(3.0, 2.5, Units.degreesToRadians(540), Units.degreesToRadians(720)),
+              0.0);
+        }, java.util.Set.of(drivetrain))
+        .withName("DriverControls.pathfindBottomCorner"));
+        
     // ==================== TEST MODE BINDINGS ====================
     // These bindings are only active in Test mode (useful for debugging)
     if (DriverStation.isTest()) {
