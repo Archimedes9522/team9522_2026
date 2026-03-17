@@ -80,8 +80,8 @@ public class TurretSubsystem extends SubsystemBase {
   private final Pivot turret;
 
   // === ABSOLUTE ENCODERS (VERNIER) ===
-  private final DutyCycleEncoder encoderA; // 19t gear
-  private final DutyCycleEncoder encoderB; // 21t gear
+  private final DutyCycleEncoder encoderA; // 19t gear, DIO 0 (kEncoderAChannel)
+  private final DutyCycleEncoder encoderB; // 21t gear, DIO 1 (kEncoderBChannel)
 
   /**
    * Creates a new TurretSubsystem.
@@ -223,7 +223,8 @@ public class TurretSubsystem extends SubsystemBase {
   }
 
   /**
-   * Computes the absolute turret angle perfectly utilizing the 19t/21t coprime Vernier mechanism.
+   * Computes the absolute turret angle perfectly utilizing the 19t/21t coprime Vernier mechanism
+   * via the Chinese Remainder Theorem (CRT).
    */
   public double getAbsoluteTurretAngleDegrees() {
       // 1. Read absolute fraction [0.0, 1.0) from both encoders
@@ -235,27 +236,31 @@ public class TurretSubsystem extends SubsystemBase {
       double a = (rawA - TurretConstants.kEncoderAOffset + 1.0) % 1.0;
       double b = (rawB - TurretConstants.kEncoderBOffset + 1.0) % 1.0;
 
-      // 3. Calculate phase difference. 
-      double delta = (a - b + 1.0) % 1.0;
+      // 3. Application of the Chinese Remainder Theorem (CRT)
+      // The true position P (in teeth) modulo 19x21=399 must satisfy:
+      // P = 19 * K_a + 19 * a 
+      // P = 21 * K_b + 21 * b
+      // Setting them equal gives: 19 * K_a - 21 * K_b = 21 * b - 19 * a
+      // Since K_a and K_b are integers, (21 * b - 19 * a) must perfectly represent the integer difference (plus noise).
+      long I = Math.round(21.0 * b - 19.0 * a);
 
-      // 4. Compute coarse turret position (in teeth limit 399)
-      // 19 * 21 = 399 total teeth before phase repetition
-      double teethCoarse = delta * (399.0 / 2.0);
+      // 4. Solve for K_a modulo 21
+      // We have 19 * K_a ≡ I (mod 21) -> -2 * K_a ≡ I (mod 21)
+      // Multiply by the modular inverse of -2 (which is 10 modulo 21):
+      // K_a ≡ 10 * I (mod 21)
+      long kA = Math.floorMod(10 * I, 21);
 
-      // 5. Calculate integer rotations (K) of Encoder A
-      long kA = Math.round((teethCoarse / 19.0) - a);
-
-      // 6. Calculate fine turret position in teeth based off the high-res Encoder A reading
+      // 5. Calculate fine turret position in teeth based off the high-res Encoder A reading
       double teethFine = 19.0 * (kA + a);
 
-      // 7. Convert from teeth to final degrees (Turret has 200 teeth)
-      // Map back to [-180, 180] bound
-      double angleDegrees = teethFine * (360.0 / 200.0);
-      
-      // Normalize to [-180, 180]
-      if (angleDegrees > 180.0) {
-          angleDegrees -= 360.0;
+      // 6. Wrap to [-199.5, 199.5) because the period of the Vernier mechanism is 399 teeth
+      // This is crucial for negative angles (e.g. going left of 0) where teethFine would otherwise be ~398
+      if (teethFine >= 399.0 / 2.0) {
+          teethFine -= 399.0;
       }
+
+      // 7. Convert from teeth to final degrees (Turret has 200 teeth)
+      double angleDegrees = teethFine * (360.0 / 200.0);
 
       return angleDegrees;
   }
