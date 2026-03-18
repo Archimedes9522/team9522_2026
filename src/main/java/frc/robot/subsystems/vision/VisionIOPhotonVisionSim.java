@@ -65,6 +65,14 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
   private final Transform3d robotToCamera;
 
   /**
+   * Gets the base robot-to-camera transform.
+   * @return The configured transform
+   */
+  public Transform3d getRobotToCamera() {
+    return robotToCamera;
+  }
+
+  /**
    * Creates a simulated PhotonVision camera.
    * 
    * @param name Camera name (must match PhotonVision config, same as real camera)

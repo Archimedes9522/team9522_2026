@@ -12,6 +12,7 @@ import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
+import static edu.wpi.first.units.Units.KilogramSquareMeters;
 
 import java.util.function.Supplier;
 
@@ -124,11 +125,11 @@ public class TurretSubsystem extends SubsystemBase {
 
     motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
 
-    // Always start at 0° and use rezero (Start button) when physically centered.
+    // Starting position is 0° — the absolute Vernier encoders override this every periodic cycle.
     PivotConfig turretConfig = new PivotConfig(motorController)
         .withHardLimit(Degrees.of(-MAX_ONE_DIR_FOV - 5), Degrees.of(MAX_ONE_DIR_FOV + 5))
-        .withStartingPosition(Degrees.of(TurretConstants.kStartingAngleDegrees))
-        .withMOI(0.05)  // kg⋅m² — simulation only; withMomentOfInertia() has compiler incompatibility in this YAMS version
+        .withStartingPosition(Degrees.of(0))
+        .withMOI(KilogramSquareMeters.of(0.05))
         .withTelemetry("Turret", TelemetryVerbosity.HIGH)
         .withMechanismPositionConfig(
             new MechanismPositionConfig()

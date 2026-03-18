@@ -42,6 +42,9 @@ public class PoseControls {
   /** The virtual target pose on the field */
   private static Pose2d targetPose = new Pose2d(new Translation2d(4, 4), Rotation2d.fromDegrees(0));
 
+  /** Virtual pose controller */
+  private static CommandXboxController controller;
+
   /** Translation speed when adjusting target (meters per cycle) */
   private static final double TRANSLATION_SPEED = 0.05;
   
@@ -55,7 +58,7 @@ public class PoseControls {
    * @param drivetrain The swerve subsystem for updating the field visualization
    */
   public static void configure(int port, SwerveSubsystem drivetrain) {
-    CommandXboxController controller = new CommandXboxController(port);
+    controller = new CommandXboxController(port);
 
     // Update the field visualization with initial pose
     updateFieldPose(drivetrain);
@@ -132,6 +135,7 @@ public class PoseControls {
    *
    * @param drivetrain The swerve subsystem containing the field
    */
+  @SuppressWarnings("resource")
   private static void updateFieldPose(SwerveSubsystem drivetrain) {
     drivetrain.getSwerveDrive().field.getObject("targetPose").setPose(targetPose);
   }

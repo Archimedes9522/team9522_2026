@@ -34,34 +34,20 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import frc.robot.util.CommandsLogging;
 import frc.robot.util.maplesim.Arena2026Rebuilt;
 
-/**
- * Main Robot class - the entry point for all robot code.
- * Extends LoggedRobot for enhanced logging and deterministic replay.
- */
+/** Main Robot class. Extends LoggedRobot for AdvantageKit logging and replay. */
 public class Robot extends LoggedRobot {
-  /** The currently scheduled autonomous command */
   private Command m_autonomousCommand;
-  
-  /** Tracks if we're coming from autonomous mode (to know if teleop should reset pose) */
   private boolean comingFromAuto = false;
-  
-  /** NavX gyroscope for heading - connected via MXP SPI port */
-  @SuppressWarnings("unused") // Used indirectly by YAGSL via swervedrive.json config
+
+  @SuppressWarnings("unused") // Used indirectly by YAGSL via swervedrive.json
   private final AHRS m_gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
-  
-  /** Container for all subsystems, commands, and button bindings */
+
   private RobotContainer m_robotContainer;
-  
-  /** Field visualization widget for SmartDashboard/AdvantageScope */
   private final Field2d m_field = new Field2d();
-  
-  /** Tracks selected auto name to update path preview when changed */
   private String autoName, newAutoName;
-  
-  /** Power Distribution Hub for voltage/current monitoring */
   private final PowerDistribution m_pdh = new PowerDistribution(1, ModuleType.kRev);
 
-  // === ALERTS (Driver Station / SmartDashboard Alerts) ===
+  // Alerts
   private final Alert chassisOnlyAlert =
     new Alert("Chassis-only mode enabled (mechanisms disabled)", AlertType.kWarning);
   private final Alert lowBatteryAlert =
@@ -74,163 +60,92 @@ public class Robot extends LoggedRobot {
     new Alert("Shooter not at speed", AlertType.kInfo);
   private final Alert autoAimInactiveAlert =
     new Alert("Auto-aim inactive", AlertType.kInfo);
-  
-  /** MapleSim arena for 2026 "Rebuilt" game simulation */
+
   private SimulatedArena m_arena;
 
-  /**
-   * Robot constructor - called once when robot code starts.
-   * Sets up AdvantageKit logging and creates RobotContainer.
-   */
   public Robot() {
-    // ==================== ADVANTAGEKIT METADATA ====================
-    // Record build info for debugging - helps identify which code version was deployed
+    // AdvantageKit metadata
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
     Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
     Logger.recordMetadata("GitSHA", BuildConstants.GIT_SHA);
     Logger.recordMetadata("GitDate", BuildConstants.GIT_DATE);
     Logger.recordMetadata("GitBranch", BuildConstants.GIT_BRANCH);
     switch (BuildConstants.DIRTY) {
-      case 0:
-        Logger.recordMetadata("GitDirty", "All changes committed");
-        break;
-      case 1:
-        Logger.recordMetadata("GitDirty", "Uncommitted changes");
-        break;
-      default:
-        Logger.recordMetadata("GitDirty", "Unknown");
-        break;
+      case 0: Logger.recordMetadata("GitDirty", "All changes committed"); break;
+      case 1: Logger.recordMetadata("GitDirty", "Uncommitted changes"); break;
+      default: Logger.recordMetadata("GitDirty", "Unknown"); break;
     }
 
-    // ==================== ADVANTAGEKIT DATA RECEIVERS ====================
-    // Configure where log data is sent based on robot mode
+    // AdvantageKit data receivers
     switch (Constants.currentMode) {
       case REAL:
-        // Real robot: Log to USB stick AND publish to NetworkTables
-        // USB logs saved to /U/logs on the roboRIO
         Logger.addDataReceiver(new WPILOGWriter());
         Logger.addDataReceiver(new NT4Publisher());
         break;
-
       case SIM:
-        // Simulation: Only publish to NetworkTables (no file logging)
         Logger.addDataReceiver(new NT4Publisher());
         break;
-
       case REPLAY:
-        // Replay mode: Read from log file and write analysis results
-        // Used to re-analyze matches after the fact
-        setUseTiming(false); // Run as fast as possible (not real-time)
+        setUseTiming(false);
         String logPath = LogFileUtil.findReplayLog();
         Logger.setReplaySource(new WPILOGReader(logPath));
         Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim")));
         break;
     }
 
-    // Start the AdvantageKit logger - must be called after configuring receivers
     Logger.start();
-
-    // Initialize command logging for AdvantageScope visualization
     CommandsLogging.initialize();
-
-    // Create RobotContainer - this initializes all subsystems and bindings
     m_robotContainer = new RobotContainer();
     setupSmartDashboard();
-    
-    // Port forward PhotonVision web interface through the RoboRIO for debugging
     PortForwarder.add(5800, "photonvision.local", 5800);
   }
 
-  /**
-   * Called every 20ms regardless of robot mode.
-   * This is the main robot loop where commands are executed.
-   */
   @Override
   public void robotPeriodic() {
-    // Set high thread priority for consistent loop timing
     Threads.setCurrentThreadPriority(true, 99);
-    
-    // Run the command scheduler - this executes all active commands
-    // and calls periodic() on all subsystems
     CommandScheduler.getInstance().run();
-    
-    // Log command activity to AdvantageScope
     CommandsLogging.logCommands();
-    
-    // Log field simulation data for AdvantageScope 3D visualization
-    // Note: Robot pose is logged as "Odometry/Robot" in SwerveSubsystem.periodic()
+
     Logger.recordOutput("FieldSimulation/AimDirection", m_robotContainer.getAimDirection());
     if (m_robotContainer.getSuperstructure() != null) {
-      Logger.recordOutput("FieldSimulation/AimTarget", 
+      Logger.recordOutput("FieldSimulation/AimTarget",
           new Pose3d(m_robotContainer.getAimPoint(), Rotation3d.kZero));
     }
-    
-    // Update dashboard displays
+
     updateSmartDashboard();
-    
-    // Reset thread priority
     Threads.setCurrentThreadPriority(false, 10);
   }
 
-  /** Called once when autonomous mode starts */
   @Override
   public void autonomousInit() {
     comingFromAuto = true;
-    
-    // Update aim point based on current alliance (only if mechanisms exist)
     if (m_robotContainer.getSuperstructure() != null) {
       m_robotContainer.getSuperstructure().updateAimPointForAlliance();
     }
-    
-    // Get the selected auto from the dashboard chooser
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
-
-    // Schedule the autonomous command to run
     if (m_autonomousCommand != null) {
-      System.out.println("[Auto] Running auto: " + m_autonomousCommand.getName());
+      System.out.println("[Auto] Running: " + m_autonomousCommand.getName());
       CommandScheduler.getInstance().schedule(m_autonomousCommand);
-    } else {
-      System.out.println("[Auto] No autonomous command selected!");
     }
   }
 
-
-
-  /** Called once when teleop mode starts */
   @Override
   public void teleopInit() {
-    // Update aim point based on current alliance (only if mechanisms exist)
     if (m_robotContainer.getSuperstructure() != null) {
       m_robotContainer.getSuperstructure().updateAimPointForAlliance();
     }
-    
-    // Cancel autonomous command when teleop starts
-    // This ensures driver has full control
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
-    
-    // In simulation, reset pose to alliance starting position
-    // BUT only if we're NOT coming from auto (auto already set the pose)
     if (!isReal() && !comingFromAuto) {
       m_robotContainer.resetSimPoseForAlliance();
     }
-    
-    // Reset the flag for next time
     comingFromAuto = false;
   }
 
-  @Override
-  public void teleopPeriodic() {
-    // Commands run automatically via CommandScheduler - nothing needed here
-  }
+  @Override public void teleopPeriodic() {}
+  @Override public void teleopExit() {}
 
-  @Override
-  public void teleopExit() {
-    // Cleanup when leaving teleop mode - nothing needed currently
-  }
-
-  /** Initialize SmartDashboard/Shuffleboard widgets */
   public void setupSmartDashboard() {
     SmartDashboard.putData("Field", m_field);
     SmartDashboard.putData("PDH", m_pdh);
@@ -238,14 +153,10 @@ public class Robot extends LoggedRobot {
     SmartDashboard.putBoolean("Chassis Only", Constants.kChassisOnly);
   }
 
-  /** Update SmartDashboard values every loop */
   private void updateSmartDashboard() {
     var robotPose = m_robotContainer.m_robotDrive.getPose();
     m_field.setRobotPose(robotPose);
 
-    // All pose/velocity/module data is logged via AdvantageKit Logger in
-    // SwerveSubsystem.periodic() and robotPeriodic(). Only publish what
-    // the Elastic driver dashboard actually needs here.
     SmartDashboard.putNumber("Elastic/MatchTime", Timer.getMatchTime());
     SmartDashboard.putNumber("Elastic/Robot/X", robotPose.getX());
     SmartDashboard.putNumber("Elastic/Robot/Y", robotPose.getY());
@@ -268,119 +179,83 @@ public class Robot extends LoggedRobot {
     // Alerts
     chassisOnlyAlert.set(Constants.kChassisOnly);
     lowBatteryAlert.set(m_pdh.getVoltage() < 11.5);
+    boolean visionConnected = SmartDashboard.getBoolean("Vision Connected", false);
+    visionDisconnectedAlert.set(!visionConnected);
+    visionNoTagsAlert.set(visionConnected && SmartDashboard.getNumber("Vision Tags Seen", 0) == 0);
+    if (superstructure != null) {
+      shooterNotReadyAlert.set(!superstructure.isReadyToShoot());
+      Command currentCmd = superstructure.getCurrentCommand();
+      autoAimInactiveAlert.set(currentCmd == null || !currentCmd.getName().contains("ShootOnTheMove"));
+    } else {
+      shooterNotReadyAlert.set(false);
+      autoAimInactiveAlert.set(false);
+    }
   }
 
-  /**
-   * Called every 20ms while robot is disabled.
-   * Used to preview selected auto path on the field widget.
-   */
   @Override
   public void disabledPeriodic() {
-    // Check if selected auto has changed
     Command selectedAuto = m_robotContainer.getAutonomousCommand();
-    if (selectedAuto == null) {
-      return; // No auto selected
-    }
-    
+    if (selectedAuto == null) return;
+
     newAutoName = selectedAuto.getName();
     if (!newAutoName.equals(autoName)) {
       autoName = newAutoName;
-      
-      // If this is a valid PathPlanner auto, display its path on the field
       if (AutoBuilder.getAllAutoNames().contains(autoName)) {
         System.out.println("Displaying " + autoName);
         try {
-          // Load all paths from the auto file
           List<PathPlannerPath> pathPlannerPaths = PathPlannerAuto.getPathGroupFromAutoFile(autoName);
-          
-          // Convert path points to poses for Field2d display
           List<Pose2d> poses = new ArrayList<>();
           for (PathPlannerPath path : pathPlannerPaths) {
             poses.addAll(
                 path.getAllPathPoints().stream()
                     .map(point -> new Pose2d(
-                            point.position.getX(), 
-                            point.position.getY(), 
+                            point.position.getX(),
+                            point.position.getY(),
                             new Rotation2d()))
                     .collect(Collectors.toList()));
           }
-          
-          // Display path on Field2d widget
           m_field.getObject("path").setPoses(poses);
         } catch (IOException | ParseException e) {
           e.printStackTrace();
         }
       } else {
-        // Clear the path if this isn't a PathPlanner auto
         m_field.getObject("path").setPoses(new ArrayList<>());
       }
     }
   }
 
-  /** Called once when test mode starts */
   @Override
   public void testInit() {
-    // Cancel all running commands for clean test environment
     CommandScheduler.getInstance().cancelAll();
   }
 
-  @Override
-  public void testPeriodic() {
-    // Test mode periodic - nothing needed currently
-  }
+  @Override public void testPeriodic() {}
 
-  // ==================== SIMULATION METHODS ====================
-  
-  /**
-   * Called once when simulation mode starts.
-   * Sets up the MapleSim arena for the 2026 "Rebuilt" game.
-   */
+  // ==================== Simulation ====================
+
   @Override
   public void simulationInit() {
-    // Shut down any existing arena instance to release physics bodies
     SimulatedArena.getInstance().shutDown();
 
-    // Create and register the 2026 Rebuilt arena
-    // Parameter: addRampCollider
-    //   true  = Ramps around hubs are solid obstacles (can't drive on them)
-    //   false = Only the hub itself is a collider (can drive on ramps)
-    // 
-    // If you're hitting invisible walls, try setting to false - the ramp 
-    // colliders extend 217 inches which might not match AdvantageScope's field
-    boolean addRampCollider = false;  
-    
-    SimulatedArena.overrideInstance(new Arena2026Rebuilt(addRampCollider));
+    // addRampCollider: false = only hub is solid (can drive on ramps)
+    SimulatedArena.overrideInstance(new Arena2026Rebuilt(false));
     m_arena = SimulatedArena.getInstance();
 
-    // NOTE: YAGSL bundles its own relocated MapleSim under swervelib.simulation.ironmaple.*,
-    // which is a DIFFERENT class hierarchy from org.ironmaple.simulation.* used by Arena2026Rebuilt.
-    // YAGSL auto-registers the drivetrain with its own internal SimulatedArena and calls
-    // simulationPeriodic() during updateOdometry(), so drivetrain physics (translation, rotation,
-    // and gyro simulation) work independently of this arena.
-    //
-    // The Arena2026Rebuilt handles game pieces, field obstacles, hubs, and outposts in a separate
-    // physics world. Game piece-robot interactions (collisions, intake) won't work across the two
-    // worlds. To unify them, Arena2026Rebuilt would need to extend YAGSL's SimulatedArena instead
-    // of the standalone MapleSim's SimulatedArena.
+    // YAGSL manages drivetrain physics in its own relocated MapleSim instance.
+    // Arena2026Rebuilt handles game pieces/field obstacles in a separate physics world.
     var swerveDrive = m_robotContainer.m_robotDrive.getSwerveDrive();
     var mapleSimDriveOpt = swerveDrive.getMapleSimDrive();
     if (mapleSimDriveOpt.isPresent()) {
-      System.out.println("MapleSim: YAGSL drivetrain simulation active (managed by YAGSL's internal SimulatedArena)");
+      System.out.println("MapleSim: YAGSL drivetrain simulation active");
     } else {
-      System.out.println("MapleSim: WARNING - No drivetrain simulation available.");
+      System.out.println("MapleSim: WARNING - No drivetrain simulation available");
     }
   }
 
-  /**
-   * Called every 20ms during simulation.
-   * Updates the MapleSim physics simulation.
-   */
   @Override
   public void simulationPeriodic() {
     if (m_arena != null) {
       m_arena.simulationPeriodic();
-      
-      // Log game piece positions for AdvantageScope 3D visualization
       Pose3d[] fuelPoses = m_arena.getGamePiecesArrayByType("Fuel");
       if (fuelPoses != null && fuelPoses.length > 0) {
         Logger.recordOutput("FieldSimulation/FuelPoses", fuelPoses);

@@ -34,99 +34,44 @@ import org.littletonrobotics.junction.Logger;
 import swervelib.SwerveInputStream;
 
 /**
- * DriverControls configures the driver controller bindings.
- * 
- * <p>This class uses YAGSL's SwerveInputStream for smoother joystick input handling.
- * SwerveInputStream provides:
- * <ul>
- *   <li>Automatic deadband application</li>
- *   <li>Alliance-relative control (field orientation flips for red alliance)</li>
- *   <li>Speed scaling</li>
- *   <li>Heading aim lock capability</li>
- * </ul>
- * 
- * <p>Control scheme (Xbox controller):
- * <ul>
- *   <li>Left Stick: Translation (forward/backward, strafe)</li>
- *   <li>Right Stick X: Rotation</li>
- *   <li>Left Bumper: Slow mode (50% speed while held)</li>
- *   <li>Left Stick Button (L3): Lock wheels in X pattern</li>
- *   <li>Start: Zero gyro heading</li>
- *   <li>Y: Center modules (test mode only)</li>
- *   <li>X: Lock wheels (test mode only)</li>
- * </ul>
+ * Driver controller bindings using YAGSL SwerveInputStream.
+ *
+ * <p>Controls: Left Stick = translate, Right Stick X = rotate,
+ * LB = slow mode, L3 = lock, Start = zero gyro.
  */
 public class DriverControls {
-  
-  /** The driver's Xbox controller */
+
   private static CommandXboxController controller;
-  
-  /** YAGSL input stream for smooth joystick handling - full speed */
   private static SwerveInputStream driveInputStream;
-  
-  /** YAGSL input stream for slow mode - 50% speed */
   private static SwerveInputStream driveInputStreamSlow;
-  
-  /** Slow mode speed multiplier (0.5 = 50% speed) */
   private static final double SLOW_MODE_SCALE = 0.5;
 
-  /**
-   * Configures the driver controller bindings.
-   * Call this once from RobotContainer.
-   * 
-   * @param port Controller USB port (usually 0)
-   * @param drivetrain The swerve drive subsystem
-   */
   public static void configure(int port, SwerveSubsystem drivetrain) {
     configure(port, drivetrain, null);
   }
 
-  /**
-   * Configures the driver controller bindings with Superstructure access.
-   * 
-   * <p>This overload enables simulation-specific bindings like fireFuel
-   * which requires access to the shooter mechanism state.
-   * 
-   * @param port Controller USB port (usually 0)
-   * @param drivetrain The swerve drive subsystem
-   * @param superstructure The Superstructure (optional, enables sim features)
-   */
   public static void configure(int port, SwerveSubsystem drivetrain, Superstructure superstructure) {
     controller = new CommandXboxController(port);
-    
-    // ==================== SWERVE INPUT STREAM (NORMAL SPEED) ====================
-    // SwerveInputStream wraps joystick inputs with useful features:
-    // - Deadband: Ignores small joystick movements (drift)
-    // - Scale: Limits max speed for training/precision
-    // - Alliance-relative: Automatically flips for red alliance
+
+    // Normal speed input stream
     driveInputStream = SwerveInputStream.of(
             drivetrain.getSwerveDrive(),
-            // Left stick Y = forward/back (negated - pushing up gives negative value)
             () -> controller.getLeftY() * -1,
-            // Left stick X = strafe (negated to match driver expectations - pushing right gives negative value)
             () -> controller.getLeftX() * -1)
-        // Right stick X = rotation
         .withControllerRotationAxis(() -> {
             if (RobotBase.isSimulation()) {
                 double rot = controller.getRightX();
-                if (Math.abs(rot) < 0.05) {
-                    rot = controller.getRawAxis(2); // Fallback to E/R keys in sim
-                }
+                if (Math.abs(rot) < 0.05) rot = controller.getRawAxis(2);
                 return rot * -1;
             }
             return controller.getRightX() * -1;
         })
-        // Field-relative driving (robot moves relative to field, not robot)
         .robotRelative(false)
-        // Flip controls for red alliance (driver station on opposite side)
         .allianceRelativeControl(true)
-        // Scale speed (0.0 to 1.0) - full speed
         .scaleTranslation(ControllerConstants.kDriveSpeedScale)
-        // Ignore small stick movements below this threshold
         .deadband(ControllerConstants.kDeadband);
-    
-    // ==================== SWERVE INPUT STREAM (SLOW MODE) ====================
-    // Same as normal but with reduced speed for precision movements
+
+    // Slow mode input stream (50% speed)
     driveInputStreamSlow = SwerveInputStream.of(
             drivetrain.getSwerveDrive(),
             () -> controller.getLeftY() * -1,
@@ -134,160 +79,84 @@ public class DriverControls {
         .withControllerRotationAxis(() -> {
             if (RobotBase.isSimulation()) {
                 double rot = controller.getRightX();
-                if (Math.abs(rot) < 0.05) {
-                    rot = controller.getRawAxis(2); // Fallback to E/R keys in sim
-                }
+                if (Math.abs(rot) < 0.05) rot = controller.getRawAxis(2);
                 return rot * -1;
             }
             return controller.getRightX() * -1;
         })
         .robotRelative(false)
         .allianceRelativeControl(true)
-        // Slow mode: 50% of normal speed for precision
         .scaleTranslation(ControllerConstants.kDriveSpeedScale * SLOW_MODE_SCALE)
         .deadband(ControllerConstants.kDeadband);
-    
-    // ==================== DEFAULT COMMAND ====================
-    // The default command runs continuously when no other command uses the subsystem
+
+    // Default command
     drivetrain.setDefaultCommand(
         drivetrain.driveFieldOriented(driveInputStream)
             .withName("DriverControls.defaultDrive"));
-    
-    // ==================== BUTTON BINDINGS ====================
+
     configureButtonBindings(drivetrain, superstructure);
   }
-  
-  /**
-   * Configures button bindings for the driver controller.
-   */
+
   private static void configureButtonBindings(SwerveSubsystem drivetrain, Superstructure superstructure) {
-    // Left Bumper - Slow mode (50% speed while held)
-    // Use for precision movements and alignment
     controller.leftBumper()
         .whileTrue(drivetrain.driveFieldOriented(driveInputStreamSlow)
             .withName("DriverControls.slowModeDrive"));
-    
-    // Left Stick Button (L3) - Lock wheels in X pattern
-    // Prevents robot from being pushed
+
     controller.leftStick()
         .whileTrue(drivetrain.lockCommand());
-    
-    // Start Button - Zero gyro heading (alliance-aware)
-    // Press when robot is facing AWAY from driver station
-    // Blue alliance: heading set to 0° (facing Red wall)
-    // Red alliance: heading set to 180° (facing Blue wall)
+
     controller.start()
         .onTrue(drivetrain.zeroHeadingForAllianceCommand());
 
-    // ==================== PATHFINDING BINDINGS ====================
-    // D-Pad Left: Pathfind to Top Driver Station Corner
-    // Uses Commands.defer to re-evaluate the alliance/target when the button is pressed
+    // Pathfinding to driver station corners
     controller.povLeft().whileTrue(
         Commands.defer(() -> {
-          var targetTranslation = FieldConstants.AimPoints.getAllianceStationTopPosition();
+          var target = FieldConstants.AimPoints.getAllianceStationTopPosition();
           var isRed = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red;
-          // The turret is on the BACK of the robot. 
-          // To shoot at the Hub, the front of the robot must face the alliance wall.
-          // WPILib Field Coordinate System: 0° is facing the Red Wall, 180° is facing the Blue Wall.
-          // Blue robot -> Front faces 180° (Blue Wall) -> Back faces 0° (Red Wall/Blue Hub)
-          // Red robot -> Front faces 0° (Red Wall) -> Back faces 180° (Blue Wall/Red Hub)
-          var targetRotation = Rotation2d.fromDegrees(isRed ? 0.0 : 180.0);
+          var rot = Rotation2d.fromDegrees(isRed ? 0.0 : 180.0);
           return AutoBuilder.pathfindToPose(
-              new Pose2d(targetTranslation.getX(), targetTranslation.getY(), targetRotation),
-              new PathConstraints(3.0, 2.5, Units.degreesToRadians(540), Units.degreesToRadians(720)),
-              0.0);
+              new Pose2d(target.getX(), target.getY(), rot),
+              new PathConstraints(3.0, 2.5, Units.degreesToRadians(540), Units.degreesToRadians(720)), 0.0);
         }, java.util.Set.of(drivetrain))
         .withName("DriverControls.pathfindTopCorner"));
 
-    // D-Pad Right: Pathfind to Bottom Driver Station Corner
     controller.povRight().whileTrue(
         Commands.defer(() -> {
-          var targetTranslation = FieldConstants.AimPoints.getAllianceStationBottomPosition();
+          var target = FieldConstants.AimPoints.getAllianceStationBottomPosition();
           var isRed = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red;
-          var targetRotation = Rotation2d.fromDegrees(isRed ? 0.0 : 180.0);
+          var rot = Rotation2d.fromDegrees(isRed ? 0.0 : 180.0);
           return AutoBuilder.pathfindToPose(
-              new Pose2d(targetTranslation.getX(), targetTranslation.getY(), targetRotation),
-              new PathConstraints(3.0, 2.5, Units.degreesToRadians(540), Units.degreesToRadians(720)),
-              0.0);
+              new Pose2d(target.getX(), target.getY(), rot),
+              new PathConstraints(3.0, 2.5, Units.degreesToRadians(540), Units.degreesToRadians(720)), 0.0);
         }, java.util.Set.of(drivetrain))
         .withName("DriverControls.pathfindBottomCorner"));
-        
-    // ==================== TEST MODE BINDINGS ====================
-    // These bindings are only active in Test mode (useful for debugging)
+
+    // Test mode bindings
     if (DriverStation.isTest()) {
-      // Y Button - Center all modules (point forward)
-      controller.y()
-          .whileTrue(drivetrain.centerModulesCommand());
-      
-      // X Button - Lock wheels in X pattern
-      controller.x()
-          .whileTrue(drivetrain.lockCommand());
-      
-      // B Button - Zero gyro
-      controller.b()
-          .onTrue(drivetrain.zeroHeadingCommand());
+      controller.y().whileTrue(drivetrain.centerModulesCommand());
+      controller.x().whileTrue(drivetrain.lockCommand());
+      controller.b().onTrue(drivetrain.zeroHeadingForAllianceCommand());
     }
 
-    // ==================== SIMULATION BINDINGS ====================
-    // These bindings only work in simulation mode with Superstructure
+    // Simulation bindings
     if (Robot.isSimulation() && superstructure != null) {
-      // Back Button - Fire FUEL projectile (10 times per second while held)
-      // Shows trajectory in AdvantageScope for testing aim
       controller.back().whileTrue(
-          Commands.repeatingSequence(
-              fireFuel(drivetrain, superstructure),
-              Commands.waitSeconds(0.1))
+          Commands.repeatingSequence(fireFuel(drivetrain, superstructure), Commands.waitSeconds(0.1))
           .withName("DriverControls.fireFuelRepeating"));
     }
   }
-  
-  /**
-   * Gets the driver controller.
-   * @return The CommandXboxController for the driver
-   */
-  public static CommandXboxController getController() {
-    return controller;
-  }
-  
-  /**
-   * Gets the drive input stream.
-   * @return The SwerveInputStream for advanced input handling
-   */
-  public static SwerveInputStream getDriveInputStream() {
-    return driveInputStream;
-  }
 
-  /**
-   * Creates a command that spawns a FUEL projectile in MapleSim.
-   * 
-   * <p>This command reads the current shooter state (turret angle, hood angle, 
-   * shooter speed) and creates a physics-simulated projectile that follows a
-   * realistic trajectory. The projectile will:
-   * <ul>
-   *   <li>Show its trajectory in AdvantageScope</li>
-   *   <li>Score in the hub if aimed correctly</li>
-   *   <li>Become a ground game piece if it misses</li>
-   * </ul>
-   * 
-   * <p>Use this with the shoot command to visualize shots in simulation.
-   * 
-   * @param drivetrain The swerve drive subsystem (for position/velocity)
-   * @param superstructure The superstructure (for turret/hood/shooter state)
-   * @return A command that fires a FUEL projectile
-   */
+  public static CommandXboxController getController() { return controller; }
+  public static SwerveInputStream getDriveInputStream() { return driveInputStream; }
+
+  /** Spawns a FUEL projectile in MapleSim using current shooter state. */
   public static Command fireFuel(SwerveSubsystem drivetrain, Superstructure superstructure) {
     return Commands.runOnce(() -> {
       SimulatedArena arena = SimulatedArena.getInstance();
-
-      // Get shooter velocity from the actual flywheel speed
       LinearVelocity shooterVelocity = superstructure.getTangentialVelocity();
-      
-      // Log the actual velocity for debugging
       Logger.recordOutput("Shooter/ActualTangentialVelocity", shooterVelocity.in(MetersPerSecond));
-      
-      // Clamp to minimum BEFORE applying the 0.5x spin scaling.
-      // Without this, a shot clamped to 5 m/s would still spawn at 2.5 m/s after scaling.
-      // Minimum of 10 m/s pre-scale ensures projectile is always >= 5 m/s post-scale.
+
+      // Clamp to minimum before 0.5x spin scaling
       LinearVelocity minVelocityPreScale = MetersPerSecond.of(10.0);
       if (shooterVelocity.lt(minVelocityPreScale)) {
         shooterVelocity = minVelocityPreScale;
@@ -296,7 +165,6 @@ public class DriverControls {
         Logger.recordOutput("Shooter/UsingMinimumVelocity", false);
       }
 
-      // Create projectile with current shooter parameters
       GamePieceProjectile fuel = new RebuiltFuelOnFly(
           drivetrain.getPose().getTranslation(),
           new Translation2d(
@@ -305,26 +173,17 @@ public class DriverControls {
           drivetrain.getSwerveDrive().getRobotVelocity(),
           drivetrain.getPose().getRotation().rotateBy(superstructure.getAimRotation3d().toRotation2d()),
           TurretSubsystem.TURRET_TRANSLATION.getMeasureZ(),
-          // 0.5x scaling because spin is applied to the fuel as it's shot
           shooterVelocity.times(0.5),
           superstructure.getHoodAngle());
 
-      // Configure callbacks to visualize the flight trajectory of the projectile
       fuel.withProjectileTrajectoryDisplayCallBack(
-          // Callback for when the FUEL will eventually hit the target
           (poses) -> {
-            // Log entire trajectory for visualization
-            if (!poses.isEmpty()) {
-              Logger.recordOutput("FieldSimulation/Shooter/ProjectileSuccessfulShot",
-                  poses.toArray(Pose3d[]::new));
-            }
+            if (!poses.isEmpty())
+              Logger.recordOutput("FieldSimulation/Shooter/ProjectileSuccessfulShot", poses.toArray(Pose3d[]::new));
           },
-          // Callback for when the FUEL will miss the target
           (poses) -> {
-            if (!poses.isEmpty()) {
-              Logger.recordOutput("FieldSimulation/Shooter/ProjectileUnsuccessfulShot",
-                  poses.toArray(Pose3d[]::new));
-            }
+            if (!poses.isEmpty())
+              Logger.recordOutput("FieldSimulation/Shooter/ProjectileUnsuccessfulShot", poses.toArray(Pose3d[]::new));
           });
 
       arena.addGamePieceProjectile(fuel);

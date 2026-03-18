@@ -41,131 +41,77 @@ import swervelib.telemetry.SwerveDriveTelemetry;
 import swervelib.telemetry.SwerveDriveTelemetry.TelemetryVerbosity;
 
 /**
- * SwerveSubsystem using YAGSL (Yet Another Generic Swerve Library).
- * 
- * <p>
- * YAGSL simplifies swerve drive implementation by:
- * <ul>
- * <li>Loading configuration from JSON files in deploy/swerve/</li>
- * <li>Handling motor controller configuration automatically</li>
- * <li>Providing built-in features like cosine compensation, heading
- * correction</li>
- * <li>Supporting multiple hardware configurations (SparkMax, TalonFX,
- * etc.)</li>
- * </ul>
- * 
- * <p>
- * Configuration files are in src/main/deploy/swerve/:
- * <ul>
- * <li>swervedrive.json - Main config (gyro, module references)</li>
- * <li>modules/*.json - Per-module configs (CAN IDs, locations)</li>
- * <li>modules/physicalproperties.json - Gear ratios, current limits</li>
- * <li>modules/pidfproperties.json - PID values</li>
- * <li>controllerproperties.json - Heading controller</li>
- * </ul>
- * 
+ * Swerve drive subsystem using YAGSL. Configuration is loaded from
+ * JSON files in {@code src/main/deploy/swerve/}.
+ *
  * @see <a href="https://docs.yagsl.com">YAGSL Documentation</a>
  */
 public class SwerveSubsystem extends SubsystemBase {
 
-  /** Maximum robot speed in meters per second */
-  private final double maximumSpeed = Units.feetToMeters(15.76); // ~4.8 m/s
-
-  /** YAGSL SwerveDrive object - handles all swerve logic */
+  private final double maximumSpeed = Units.feetToMeters(15.76);
   private final SwerveDrive swerveDrive;
 
-  /** PathPlanner robot configuration */
   private RobotConfig config;
-
-  /**
-   * PathPlanner SwerveSetpointGenerator for smoother teleop driving.
-   * Generates kinematically feasible setpoints that prevent wheel scrub
-   * by smoothly transitioning between module states.
-   */
   private SwerveSetpointGenerator setpointGenerator;
-
-  /**
-   * Previous setpoint for the setpoint generator (carries state between cycles)
-   */
   private SwerveSetpoint previousSetpoint;
 
-  /**
-   * Creates a new SwerveSubsystem.
-   * Loads configuration from JSON files and configures PathPlanner.
-   */
   public SwerveSubsystem() {
-    // ==================== TELEMETRY ====================
-    // Set telemetry verbosity for debugging
-    // HIGH = all data, LOW = essential only, NONE = disabled
     SwerveDriveTelemetry.verbosity = TelemetryVerbosity.HIGH;
 
-    // ==================== LOAD CONFIGURATION ====================
-    // YAGSL reads JSON config files from the deploy/swerve directory
+    // Load YAGSL JSON configuration
     File swerveJsonDirectory = new File(Filesystem.getDeployDirectory(), "swerve");
 
-    // Starting pose for simulation - depends on alliance color
-    // Blue alliance: Left side of field (X ~2.75m), facing right (0°)
-    // Red alliance: Right side of field (X ~14.25m), facing left (180°)
-    // Note: In sim, DriverStation.getAlliance() may not be set yet at construction
-    // time,
-    // so we default to blue. The pose will be corrected when alliance is set.
+    // Simulation starting pose (default to blue; corrected when alliance is set)
     boolean isBlueAlliance = DriverStation.getAlliance()
-        .map(alliance -> alliance == DriverStation.Alliance.Blue)
-        .orElse(true); // Default to blue if not set
+        .map(alliance -> alliance == Alliance.Blue)
+        .orElse(true);
 
     Pose2d simulationStartPose = isBlueAlliance
-        ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0)) // Blue: left side, facing right
-        : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180)); // Red: right side, facing left
+        ? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))
+        : new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));
 
     try {
-      // Parse JSON files and create SwerveDrive object with starting pose
       swerveDrive = new SwerveParser(swerveJsonDirectory).createSwerveDrive(maximumSpeed, simulationStartPose);
     } catch (Exception e) {
       throw new RuntimeException("Failed to create SwerveDrive from JSON config", e);
     }
 
-    // ==================== YAGSL CONFIGURATION ====================
-    // Heading correction should only be used while controlling the robot via angle
-    // (not angular velocity)
-    // When enabled, it can cause unwanted rotation when driving translationally
+    // ==================== YAGSL Advanced Features ====================
+    // These match the CA26 recommended configuration for YAGSL swerve drives.
+    // All four features are disabled in simulation to prevent MapleSim physics
+    // feedback loops — they only activate on the real robot.
+
+    // Heading correction: maintains heading when only translating (no rotation input).
+    // Disabled for angular-velocity-based teleop; enable for heading-lock modes.
     swerveDrive.setHeadingCorrection(false);
 
-    // Correct for skew that gets worse as angular velocity increases
-    // CA26 used 0.1. However, because we are using a different IMU configuration
-    // (NavX),
-    // the +0.1 coefficient amplified the skew by applying compensation backwards.
-    // Inverting the coefficient to -0.1 correctly negates the swerve drift.
-    //
-    // CRITICAL: YAGSL documentation explicitly warns that heading correction /
-    // angular
-    // velocity compensation CAUSES uncontrollable drift in simulation due to
-    // physics conflicts.
-    // It must be disabled when simulating!
-    swerveDrive.setAngularVelocityCompensation(!RobotBase.isSimulation(), !RobotBase.isSimulation(), -0.1);
+    // Chassis discretization: applies ChassisSpeeds.discretize() to correct for
+    // second-order kinematics skew when translating and rotating simultaneously.
+    swerveDrive.setChassisDiscretization(true, 0.02);
 
-    // Cosine compensation improves accuracy at high angles, but causes
-    // discrepancies in simulation
+    // Angular velocity compensation: uses IMU feedback to actively correct skew
+    // that worsens with angular velocity. Coefficient tuned for NavX mounted face-up.
+    // Start at 0.1, invert sign if skew gets worse. Disabled in sim by YAGSL.
+    swerveDrive.setAngularVelocityCompensation(
+        !RobotBase.isSimulation(), !RobotBase.isSimulation(), 0.1);
+
+    // Cosine compensation: scales drive output by cos(steering error) so modules
+    // contribute proportionally even when not perfectly aligned yet.
     swerveDrive.setCosineCompensator(!RobotBase.isSimulation());
 
-    // Periodically re-synchronize absolute encoders with motor encoders when
-    // modules
-    // are not moving. This corrects any drift in the integrated encoder over time.
-    // The "3" is the number of degrees of tolerance before a sync is triggered.
-    // (From CA26 — one of the key advantages of YAGSL over MAXSwerve template)
+    // Module auto-sync: re-synchronizes relative encoders with absolute encoders
+    // when modules are stationary. 3° tolerance before a sync is triggered.
     swerveDrive.setModuleEncoderAutoSynchronize(true, 3);
 
-    // ==================== PATHPLANNER CONFIGURATION ====================
+    // ==================== PathPlanner ====================
     try {
       config = RobotConfig.fromGUISettings();
 
-      // SwerveSetpointGenerator smooths teleop driving by generating kinematically
-      // feasible setpoints. This prevents wheel scrub and reduces wear.
-      // Max steer velocity: NEO free speed (5676 RPM) / angle gear ratio (46.42:1)
-      // = 5676 / 60 / 46.42 * 2π ≈ 12.84 rad/s
+      // SwerveSetpointGenerator produces kinematically feasible setpoints
+      // for smoother teleop driving and reduced wheel scrub.
       double maxSteerVelocityRadPerSec = (5676.0 / 60.0 / 46.42) * 2.0 * Math.PI;
       setpointGenerator = new SwerveSetpointGenerator(config, maxSteerVelocityRadPerSec);
 
-      // Initialize previous setpoint to current state
       previousSetpoint = new SwerveSetpoint(
           getRobotRelativeSpeeds(),
           swerveDrive.getStates(),
@@ -174,98 +120,57 @@ public class SwerveSubsystem extends SubsystemBase {
       e.printStackTrace();
     }
 
-    // Configure PathPlanner AutoBuilder
     AutoBuilder.configure(
-        this::getPose, // Get current pose
-        this::resetOdometry, // Reset pose
-        this::getRobotRelativeSpeeds, // Get robot-relative speeds
-
-        // Drive with speeds and feedforwards for smoother autonomous paths
-        // PathPlanner provides module feedforwards (forces) that improve path tracking
+        this::getPose,
+        this::resetOdometry,
+        this::getRobotRelativeSpeeds,
         (speeds, feedforwards) -> swerveDrive.drive(
             speeds,
             swerveDrive.kinematics.toSwerveModuleStates(speeds),
             feedforwards.linearForces()),
-
-        // Holonomic path controller — PID values from AutoConstants
         new PPHolonomicDriveController(
-            new PIDConstants(AutoConstants.kPTranslation, 0.0, 0.0), // Translation PID
-            new PIDConstants(AutoConstants.kPRotation, 0.0, 0.0) // Rotation PID
-        ),
+            new PIDConstants(AutoConstants.kPTranslation, 0.0, 0.0),
+            new PIDConstants(AutoConstants.kPRotation, 0.0, 0.0)),
         config,
-
-        // Flip path for red alliance
-        () -> {
-          var alliance = DriverStation.getAlliance();
-          if (alliance.isPresent()) {
-            return alliance.get() == DriverStation.Alliance.Red;
-          }
-          return false;
-        },
+        () -> DriverStation.getAlliance()
+            .map(a -> a == Alliance.Red)
+            .orElse(false),
         this);
   }
 
-  // ==================== POSE ESTIMATION ====================
+  // ==================== Pose Estimation ====================
 
-  /**
-   * Gets the current robot pose from the pose estimator.
-   * 
-   * @return The robot's estimated position and rotation on the field
-   */
   public Pose2d getPose() {
     return swerveDrive.getPose();
   }
 
-  /**
-   * Gets the current robot pose as a 3D pose.
-   * Z is always 0 (ground level), pitch and roll are always 0.
-   * 
-   * @return The robot's pose in 3D space
-   */
   public Pose3d getPose3d() {
     Pose2d pose2d = getPose();
     return new Pose3d(
-        pose2d.getX(),
-        pose2d.getY(),
-        0.0, // On the ground
+        pose2d.getX(), pose2d.getY(), 0.0,
         new Rotation3d(0, 0, pose2d.getRotation().getRadians()));
   }
 
-  /**
-   * Gets the robot's current rotation.
-   * 
-   * @return The robot's heading
-   */
   public Rotation2d getRotation() {
     return getPose().getRotation();
   }
 
-  /**
-   * Resets the pose estimator to a specific pose.
-   * 
-   * @param pose The new pose
-   */
   public void resetOdometry(Pose2d pose) {
     swerveDrive.resetOdometry(pose);
   }
 
-  /**
-   * Resets pose to origin (0, 0, 0).
-   */
   public void resetPose() {
     resetOdometry(new Pose2d());
   }
 
-  // ==================== VISION INTEGRATION ====================
+  // ==================== Vision ====================
 
   /**
    * Adds a vision measurement to the pose estimator.
-   * Called by the Vision subsystem when a valid AprilTag pose is detected.
    *
-   * @param visionRobotPoseMeters    Robot pose from vision (field-relative)
-   * @param timestampSeconds         When the image was captured
-   * @param visionMeasurementStdDevs How much to trust this measurement [x, y,
-   *                                 theta]
+   * @param visionRobotPoseMeters    Robot pose from vision
+   * @param timestampSeconds         Capture timestamp
+   * @param visionMeasurementStdDevs Trust level [x, y, theta]
    */
   public void addVisionMeasurement(
       Pose2d visionRobotPoseMeters,
@@ -275,29 +180,17 @@ public class SwerveSubsystem extends SubsystemBase {
         visionRobotPoseMeters, timestampSeconds, visionMeasurementStdDevs);
   }
 
-  // ==================== SPEED GETTERS ====================
+  // ==================== Speed Getters ====================
 
-  /**
-   * Gets the robot-relative chassis speeds.
-   * 
-   * @return Current ChassisSpeeds (robot frame)
-   */
   public ChassisSpeeds getRobotRelativeSpeeds() {
     return swerveDrive.getRobotVelocity();
   }
 
-  /**
-   * Gets the field-relative chassis speeds.
-   * 
-   * @return Current ChassisSpeeds (field frame)
-   */
   public ChassisSpeeds getFieldRelativeSpeeds() {
     return swerveDrive.getFieldVelocity();
   }
 
-  /**
-   * Returns the robot's total velocity magnitude in m/s.
-   */
+  /** Returns total translational velocity magnitude in m/s. */
   public double getRobotVelocity() {
     ChassisSpeeds speeds = getRobotRelativeSpeeds();
     return Math.sqrt(
@@ -305,45 +198,27 @@ public class SwerveSubsystem extends SubsystemBase {
             + speeds.vyMetersPerSecond * speeds.vyMetersPerSecond);
   }
 
-  // ==================== DRIVE METHODS ====================
+  // ==================== Drive Methods ====================
 
   /**
-   * Main drive method for teleop - uses joystick inputs.
-   * 
-   * @param xSpeed        Normalized speed (-1 to 1) forward
-   * @param ySpeed        Normalized speed (-1 to 1) left
-   * @param rot           Normalized rotation (-1 to 1) counter-clockwise
-   * @param fieldRelative True for field-relative, false for robot-relative
+   * Drives with normalized joystick inputs.
+   *
+   * @param xSpeed        Forward speed (-1 to 1)
+   * @param ySpeed        Left speed (-1 to 1)
+   * @param rot           CCW rotation (-1 to 1)
+   * @param fieldRelative True for field-relative driving
    */
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
-    // Convert normalized inputs to actual speeds
     double xSpeedMPS = xSpeed * maximumSpeed;
     double ySpeedMPS = ySpeed * maximumSpeed;
     double rotRadPS = rot * swerveDrive.getMaximumChassisAngularVelocity();
-
-    // Create translation vector
-    Translation2d translation = new Translation2d(xSpeedMPS, ySpeedMPS);
-
-    // Drive the robot
-    swerveDrive.drive(translation, rotRadPS, fieldRelative, false);
+    swerveDrive.drive(new Translation2d(xSpeedMPS, ySpeedMPS), rotRadPS, fieldRelative, false);
   }
 
-  /**
-   * Drives with a ChassisSpeeds object (robot-relative).
-   * Used by PathPlanner for autonomous.
-   * 
-   * @param speeds Robot-relative chassis speeds
-   */
   public void driveRobotRelative(ChassisSpeeds speeds) {
     swerveDrive.drive(speeds);
   }
 
-  /**
-   * Drives with a ChassisSpeeds object.
-   * 
-   * @param speeds        Chassis speeds
-   * @param fieldRelative True for field-relative
-   */
   public void drive(ChassisSpeeds speeds, boolean fieldRelative) {
     if (fieldRelative) {
       swerveDrive.driveFieldOriented(speeds);
@@ -353,122 +228,60 @@ public class SwerveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Drives using the SwerveSetpointGenerator for smoother module transitions.
-   * This generates kinematically feasible setpoints that prevent wheel scrub,
-   * producing smoother driving especially during direction changes.
-   * 
-   * <p>
-   * Uses PathPlanner's setpoint generator to limit module state changes
-   * to what is physically achievable, reducing wheel wear and improving control.
-   * 
-   * @param speeds Desired robot-relative chassis speeds
+   * Drives using PathPlanner's SwerveSetpointGenerator for smoother
+   * module transitions and reduced wheel scrub.
    */
   public void driveWithSetpoints(ChassisSpeeds speeds) {
     if (setpointGenerator == null || previousSetpoint == null) {
-      // Fallback if setpoint generator wasn't initialized
       swerveDrive.drive(speeds);
       return;
     }
-
-    // Generate a feasible setpoint from the desired speeds
-    previousSetpoint = setpointGenerator.generateSetpoint(
-        previousSetpoint, speeds, 0.02); // 0.02s = 20ms loop period
-
-    // Drive using the smoothed setpoint with feedforwards
+    previousSetpoint = setpointGenerator.generateSetpoint(previousSetpoint, speeds, 0.02);
     swerveDrive.drive(
         previousSetpoint.robotRelativeSpeeds(),
         previousSetpoint.moduleStates(),
         previousSetpoint.feedforwards().linearForces());
   }
 
-  // ==================== HEADING CORRECTION ====================
+  // ==================== Heading ====================
 
   /**
-   * Enables or disables heading correction.
-   * 
-   * <p>
-   * When enabled, the robot will actively maintain its current heading when
-   * driving translationally (no rotational input). This is useful for aim modes
-   * where the robot should hold a specific angle while strafing.
-   * 
-   * <p>
-   * When disabled (default), the robot only rotates when rotational input
-   * is given, which feels more natural for normal teleop driving.
-   * 
-   * @param enabled True to enable heading correction
+   * Enables/disables heading correction. When enabled, the robot actively
+   * maintains its heading while translating without rotational input.
    */
   public void setHeadingCorrection(boolean enabled) {
     swerveDrive.setHeadingCorrection(enabled);
   }
 
-  // ==================== COMMANDS ====================
+  // ==================== Commands ====================
 
-  /**
-   * Creates a command that drives field-oriented using a SwerveInputStream.
-   * This is the preferred method for teleop driving with YAGSL.
-   * 
-   * @param inputStream The SwerveInputStream providing joystick inputs
-   * @return A command that continuously drives based on the input stream
-   */
+  /** Drives field-oriented using a SwerveInputStream (default teleop command). */
   public Command driveFieldOriented(SwerveInputStream inputStream) {
     return run(() -> swerveDrive.driveFieldOriented(inputStream.get()))
         .withName("SwerveSubsystem.driveFieldOriented");
   }
 
   /**
-   * Creates a command that drives field-oriented using the
-   * SwerveSetpointGenerator.
-   * This produces smoother module transitions than raw driving, reducing wheel
-   * scrub.
-   * 
-   * <p>
-   * Recommended for competition driving — smoother than
-   * {@link #driveFieldOriented}.
-   * 
-   * @param inputStream The SwerveInputStream providing joystick inputs
-   * @return A command that drives with setpoint generation
+   * Drives field-oriented with setpoint generation for smoother module
+   * transitions. Recommended for competition.
    */
   public Command driveFieldOrientedWithSetpoints(SwerveInputStream inputStream) {
     return run(() -> {
       ChassisSpeeds fieldSpeeds = inputStream.get();
-      // Convert field-oriented to robot-relative for the setpoint generator
-      ChassisSpeeds robotSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-          fieldSpeeds, getRotation());
+      ChassisSpeeds robotSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(fieldSpeeds, getRotation());
       driveWithSetpoints(robotSpeeds);
     }).withName("SwerveSubsystem.driveFieldOrientedWithSetpoints");
   }
 
-  /**
-   * Creates a command that locks wheels in an X pattern.
-   * Prevents the robot from being pushed.
-   */
-  public Command setXCommand() {
-    return this.run(() -> swerveDrive.lockPose());
-  }
-
-  /**
-   * Creates a command that locks wheels in an X pattern.
-   * Alias for setXCommand() for CA26 compatibility.
-   */
+  /** Locks wheels in an X pattern to prevent being pushed. */
   public Command lockCommand() {
-    return setXCommand();
+    return this.run(() -> swerveDrive.lockPose())
+        .withName("SwerveSubsystem.lock");
   }
 
-  /**
-   * Locks the wheels in an X pattern immediately.
-   * Use lockCommand() for a command-based approach.
-   */
-  public void lock() {
-    swerveDrive.lockPose();
-  }
-
-  /**
-   * Creates a command that centers all modules (points them forward).
-   * Useful for testing and calibration.
-   */
+  /** Centers all modules (points wheels forward). Useful for calibration. */
   public Command centerModulesCommand() {
     return run(() -> {
-      // Create states with 0 speed and 0 angle
       SwerveModuleState[] centeredStates = new SwerveModuleState[4];
       for (int i = 0; i < 4; i++) {
         centeredStates[i] = new SwerveModuleState(0, Rotation2d.fromDegrees(0));
@@ -478,37 +291,8 @@ public class SwerveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Creates a command that resets the gyro heading.
-   * Use when the robot is facing away from the driver station.
-   *
-   * @deprecated Use {@link #zeroHeadingForAllianceCommand()} instead, which
-   *             sets the correct heading for the current alliance.
-   */
-  @Deprecated
-  public Command zeroHeadingCommand() {
-    return this.runOnce(() -> swerveDrive.zeroGyro());
-  }
-
-  /**
-   * Creates a command that resets the gyro heading based on the current alliance.
-   *
-   * <p>
-   * YAGSL's {@code zeroGyro()} always sets heading to 0°, which is only correct
-   * for Blue alliance (robot facing toward Red wall). On Red alliance, the robot
-   * faces toward the Blue wall (180°), so the heading must be set to 180°
-   * instead.
-   *
-   * <p>
-   * Press this when the robot is facing <b>away from the driver station</b>:
-   * <ul>
-   * <li>Blue: heading set to 0° (facing toward Red wall)</li>
-   * <li>Red: heading set to 180° (facing toward Blue wall)</li>
-   * </ul>
-   *
-   * <p>
-   * This works correctly with
-   * {@code SwerveInputStream.allianceRelativeControl(true)},
-   * which converts driver-relative "forward" to the correct field direction.
+   * Resets gyro heading for the current alliance. Press when the robot
+   * is facing away from the driver station.
    */
   public Command zeroHeadingForAllianceCommand() {
     return this.runOnce(() -> {
@@ -522,12 +306,8 @@ public class SwerveSubsystem extends SubsystemBase {
     }).withName("SwerveSubsystem.zeroHeadingForAlliance");
   }
 
-  /**
-   * Resets the heading to the correct value for the given alliance.
-   * Preserves the current position (X, Y) and only changes the rotation.
-   *
-   * @param alliance The current alliance
-   */
+  // ==================== Utility ====================
+
   public void resetHeadingForAlliance(Alliance alliance) {
     Rotation2d heading = (alliance == Alliance.Red)
         ? Rotation2d.fromDegrees(180)
@@ -535,87 +315,40 @@ public class SwerveSubsystem extends SubsystemBase {
     resetOdometry(new Pose2d(getPose().getTranslation(), heading));
   }
 
-  /**
-   * Zeros the gyro heading immediately.
-   * Use zeroHeadingCommand() for a command-based approach.
-   */
   public void zeroGyro() {
     swerveDrive.zeroGyro();
   }
 
-  /**
-   * Gets the underlying YAGSL SwerveDrive object.
-   * Useful for advanced operations and SwerveInputStream.
-   * 
-   * @return The SwerveDrive instance
-   */
   public SwerveDrive getSwerveDrive() {
     return swerveDrive;
   }
 
-  // ==================== UTILITY METHODS ====================
-
-  /**
-   * Gets the current heading in degrees.
-   * 
-   * @return Heading in degrees (-180 to 180)
-   */
   public double getHeading() {
     return getRotation().getDegrees();
   }
 
-  /**
-   * Returns the current swerve module states.
-   * 
-   * @return Array of module states
-   */
   public SwerveModuleState[] getModuleStates() {
     return swerveDrive.getStates();
   }
 
-  /**
-   * Sets module states directly.
-   * 
-   * @param desiredStates Array of desired states
-   */
   public void setModuleStates(SwerveModuleState[] desiredStates) {
     swerveDrive.setModuleStates(desiredStates, false);
   }
 
-  /**
-   * Stops all drive motors.
-   */
   public void stop() {
     drive(0, 0, 0, true);
   }
 
-  /**
-   * Resets drive motor encoders to zero.
-   * Note: YAGSL handles encoder management internally.
-   */
-  public void resetEncoders() {
-    // YAGSL doesn't expose resetEncoders directly
-    // Encoder positions are handled internally by the library
-    // If you need to reset odometry, use resetOdometry(new Pose2d()) instead
+  public void lock() {
+    swerveDrive.lockPose();
   }
 
-  /**
-   * Gets the turn rate in degrees per second.
-   * 
-   * @return Turn rate
-   */
   public double getTurnRate() {
     return swerveDrive.getGyro().getYawAngularVelocity().magnitude();
   }
 
   @Override
   public void periodic() {
-    // YAGSL handles odometry updates internally
-    // YAGSL's TelemetryVerbosity.HIGH already publishes module states, chassis
-    // speeds,
-    // and gyro data — only log what YAGSL doesn't provide.
-
-    // Log robot pose for AdvantageScope 3D visualization
     Logger.recordOutput("Odometry/Robot", getPose());
     Logger.recordOutput("Odometry/Heading", getHeading());
   }

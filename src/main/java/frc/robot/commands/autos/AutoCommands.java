@@ -52,8 +52,8 @@ public final class AutoCommands {
   public static void registerAll(SwerveSubsystem drivetrain, Superstructure superstructure) {
 
     // ==================== DRIVE COMMANDS ====================
-    NamedCommands.registerCommand("setX", drivetrain.setXCommand());
-    NamedCommands.registerCommand("zeroHeading", drivetrain.zeroHeadingCommand());
+    NamedCommands.registerCommand("setX", drivetrain.lockCommand());
+    NamedCommands.registerCommand("zeroHeading", drivetrain.zeroHeadingForAllianceCommand());
 
     // Skip mechanism commands when running chassis-only
     if (superstructure == null) {
