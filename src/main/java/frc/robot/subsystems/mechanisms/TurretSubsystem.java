@@ -120,8 +120,8 @@ public class TurretSubsystem extends SubsystemBase {
         .withIdleMode(MotorMode.COAST)
         .withSoftLimit(Degrees.of(-MAX_ONE_DIR_FOV), Degrees.of(MAX_ONE_DIR_FOV))
         .withStatorCurrentLimit(Amps.of(TurretConstants.kCurrentLimitAmps))
-        .withClosedLoopRampRate(Seconds.of(0.1))
-        .withOpenLoopRampRate(Seconds.of(0.1));
+        .withClosedLoopRampRate(Seconds.of(0.02))
+        .withOpenLoopRampRate(Seconds.of(0.05));
 
     motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
 

@@ -114,8 +114,8 @@ public final class Constants {
     public static final double kOperatorPresetOffsetDegrees = 0.0;
     public static final int kCurrentLimitAmps = 20;
 
-    public static final double kMaxVelocityDegPerSec = 500.0;
-    public static final double kMaxAccelDegPerSecSq = 500.0;
+    public static final double kMaxVelocityDegPerSec = 720.0;
+    public static final double kMaxAccelDegPerSecSq = 1000.0;
 
     // PID (SysId position loop, kD damped for YAMS)
     public static final double kP = 5.9;

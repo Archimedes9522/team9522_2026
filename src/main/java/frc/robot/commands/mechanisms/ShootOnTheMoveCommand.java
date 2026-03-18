@@ -45,17 +45,30 @@ public class ShootOnTheMoveCommand extends Command {
   private static final double MAX_DISTANCE_M = 12.0;
   /** Robot speed below which lead compensation is zeroed (m/s). Prevents jitter when nearly stopped. */
   private static final double LEAD_DEADBAND_MPS = 0.1;
-  /** Maximum turret angle change per cycle in degrees. Prevents sudden snapping. */
-  private static final double MAX_TURRET_SLEW_DEG_PER_CYCLE = 5.0;
+  /** Maximum turret angle change per cycle in degrees. Prevents sudden snapping.
+   *  At 50Hz: 10°/cycle = 500 deg/sec, matching the YAMS motion profile limit. */
+  private static final double MAX_TURRET_SLEW_DEG_PER_CYCLE = 10.0;
 
   /** Previous turret target for slew limiting */
   private double previousTurretTargetDeg = 0.0;
+
+  /** Live-tunable RPM map, rebuilt from SmartDashboard on each command start */
+  private InterpolatingDoubleTreeMap liveRpmMap;
+
+  /** Distance keys for the RPM table (meters) */
+  private static final double[] RPM_TABLE_DISTANCES = {2.0, 3.0, 4.0, 4.86, 6.0, 8.0, 10.0, 12.0};
 
   public ShootOnTheMoveCommand(SwerveSubsystem drivetrain, Superstructure superstructure,
       Supplier<Translation3d> aimPointSupplier) {
     this.drivetrain = drivetrain;
     this.superstructure = superstructure;
     this.aimPointSupplier = aimPointSupplier;
+
+    // Publish default RPM values to SmartDashboard for live tuning
+    for (double dist : RPM_TABLE_DISTANCES) {
+      SmartDashboard.putNumber("ShootRPM/" + dist + "m", SHOOTING_SPEED_BY_DISTANCE.get(dist));
+    }
+    SmartDashboard.putNumber("ShootRPM/GlobalOffset", 0.0);
 
     // Require the turret, shooter, and hood subsystems so we have exclusive control
     addRequirements(superstructure.turret, superstructure.shooter, superstructure.hood);
@@ -68,7 +81,15 @@ public class ShootOnTheMoveCommand extends Command {
     latestShootSpeed = RPM.of(3000); // Start with a reasonable default speed
     previousTurretTargetDeg = latestTurretAngle.in(Degrees);
     SmartDashboard.putBoolean("Auto-Aim Active", true);
-    
+
+    // Rebuild RPM map from SmartDashboard values (allows live tuning between shots)
+    liveRpmMap = new InterpolatingDoubleTreeMap();
+    for (double dist : RPM_TABLE_DISTANCES) {
+      double rpm = SmartDashboard.getNumber("ShootRPM/" + dist + "m",
+          SHOOTING_SPEED_BY_DISTANCE.get(dist));
+      liveRpmMap.put(dist, rpm);
+    }
+
     System.out.println("[ShootOnTheMove] Started - aiming at " + aimPointSupplier.get());
   }
 
@@ -225,7 +246,10 @@ public class ShootOnTheMoveCommand extends Command {
   }
 
   private AngularVelocity calculateRequiredShooterSpeed(Distance distanceToTarget) {
-    return RPM.of(SHOOTING_SPEED_BY_DISTANCE.get(distanceToTarget.in(Meters)));
+    InterpolatingDoubleTreeMap map = (liveRpmMap != null) ? liveRpmMap : SHOOTING_SPEED_BY_DISTANCE;
+    double baseRpm = map.get(distanceToTarget.in(Meters));
+    double offset = SmartDashboard.getNumber("ShootRPM/GlobalOffset", 0.0);
+    return RPM.of(baseRpm + offset);
   }
 
   // meters, seconds (time of flight lookup for lead compensation)

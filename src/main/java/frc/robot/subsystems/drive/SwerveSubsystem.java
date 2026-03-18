@@ -90,10 +90,11 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive.setChassisDiscretization(true, 0.02);
 
     // Angular velocity compensation: uses IMU feedback to actively correct skew
-    // that worsens with angular velocity. Coefficient tuned for NavX mounted face-up.
-    // Start at 0.1, invert sign if skew gets worse. Disabled in sim by YAGSL.
+    // that worsens with angular velocity. Coefficient sign depends on IMU orientation.
+    // Negated from 0.1 → -0.1 after invertedIMU changed to false (commit 2db3c95).
+    // If skew reverses direction, try 0.0 (disabled) or tune magnitude.
     swerveDrive.setAngularVelocityCompensation(
-        !RobotBase.isSimulation(), !RobotBase.isSimulation(), 0.1);
+        !RobotBase.isSimulation(), !RobotBase.isSimulation(), -0.1);
 
     // Cosine compensation: scales drive output by cos(steering error) so modules
     // contribute proportionally even when not perfectly aligned yet.
