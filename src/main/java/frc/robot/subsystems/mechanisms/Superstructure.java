@@ -18,6 +18,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -48,6 +49,7 @@ public class Superstructure extends SubsystemBase {
   public final IntakeSubsystem intake;
   public final HopperSubsystem hopper;
   public final KickerSubsystem kicker;
+  public final LEDSubsystem led;
 
   // === TOLERANCE VALUES ===
   private static final AngularVelocity SHOOTER_TOLERANCE = RPM.of(100);
@@ -69,6 +71,10 @@ public class Superstructure extends SubsystemBase {
   // Default to alliance-aware hub position (will be BLUE if on blue alliance)
   private Translation3d aimPoint = FieldConstants.AimPoints.getAllianceHubPosition();
 
+  // === STATE TRACKING ===
+  private boolean preSpinActive = false;
+  private boolean hasGamePiece = false; // Add future sensor logic here
+
   /**
    * Creates a new Superstructure with all mechanism subsystems.
    * 
@@ -78,6 +84,7 @@ public class Superstructure extends SubsystemBase {
    * @param intake The intake subsystem
    * @param hopper The hopper subsystem
    * @param kicker The kicker subsystem
+   * @param led The LED subsystem
    */
   public Superstructure(
       ShooterSubsystem shooter,
@@ -85,13 +92,15 @@ public class Superstructure extends SubsystemBase {
       HoodSubsystem hood,
       IntakeSubsystem intake,
       HopperSubsystem hopper,
-      KickerSubsystem kicker) {
+      KickerSubsystem kicker,
+      LEDSubsystem led) {
     this.shooter = shooter;
     this.turret = turret;
     this.hood = hood;
     this.intake = intake;
     this.hopper = hopper;
     this.kicker = kicker;
+    this.led = led;
 
     // Create triggers for readiness checks
     this.isShooterAtSpeed = new Trigger(
@@ -415,6 +424,16 @@ public class Superstructure extends SubsystemBase {
     return isReadyToShoot.getAsBoolean();
   }
 
+  // ==================== STATE TRACKING ====================
+
+  public void setPreSpinActive(boolean active) {
+    this.preSpinActive = active;
+  }
+
+  public void setHasGamePiece(boolean hasPiece) {
+    this.hasGamePiece = hasPiece;
+  }
+
   // ==================== PERIODIC ====================
 
   @Override
@@ -435,5 +454,33 @@ public class Superstructure extends SubsystemBase {
     
     // Log shooter pose for 3D visualization
     Logger.recordOutput("Superstructure/ShooterPose", getShooterPose());
+    Logger.recordOutput("Superstructure/PreSpinActive", preSpinActive);
+    Logger.recordOutput("Superstructure/HasGamePiece", hasGamePiece);
+
+    // === PRE-SPIN LOGIC ===
+    // If no command is currently fighting for the shooter (like ShootOnTheMove),
+    // we can apply our pre-spin idle speed.
+    if (shooter.getCurrentCommand() == null) {
+      if (preSpinActive) {
+        shooter.setTargetSpeed(RPM.of(3000));
+      } else {
+        shooter.setTargetSpeed(RPM.of(0));
+      }
+    }
+
+    // === LED STATE EVALUATION ===
+    if (led != null && !DriverStation.isDisabled()) {
+      if (isReadyToShoot.getAsBoolean()) {
+        led.setState(LEDSubsystem.LEDState.AUTO_AIM_READY);
+      } else if (hasGamePiece) {
+        led.setState(LEDSubsystem.LEDState.HAS_PIECE);
+      } else if (intake.isDeployed()) {
+        led.setState(LEDSubsystem.LEDState.INTAKING);
+      } else {
+        led.setState(LEDSubsystem.LEDState.DEFAULT_TELEOP);
+      }
+    } else if (led != null) {
+      led.setState(LEDSubsystem.LEDState.DISABLED_BREATHING);
+    }
   }
 }

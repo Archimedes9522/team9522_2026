@@ -193,4 +193,10 @@ public final class Constants {
     public static final double kFeedSpeed = 1.0;
     public static final int kCurrentLimitAmps = 20;
   }
+
+  /** Addressable LED Strip (WS2812B). */
+  public static final class LEDConstants {
+    public static final int kPwmPort = 9; // Default PWM port on RoboRIO
+    public static final int kStripLength = 60; // Adjust to actual physical strip length
+  }
 }

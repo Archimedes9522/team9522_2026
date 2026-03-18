@@ -32,6 +32,7 @@ import frc.robot.subsystems.mechanisms.HoodSubsystem;
 import frc.robot.subsystems.mechanisms.HopperSubsystem;
 import frc.robot.subsystems.mechanisms.IntakeSubsystem;
 import frc.robot.subsystems.mechanisms.KickerSubsystem;
+import frc.robot.subsystems.mechanisms.LEDSubsystem;
 import frc.robot.subsystems.mechanisms.ShooterSubsystem;
 import frc.robot.subsystems.mechanisms.Superstructure;
 import frc.robot.subsystems.mechanisms.TurretSubsystem;
@@ -52,6 +53,7 @@ public class RobotContainer {
 	private final IntakeSubsystem m_intake;
 	private final HopperSubsystem m_hopper;
 	private final KickerSubsystem m_kicker;
+	private final LEDSubsystem m_led;
 	private final Superstructure m_superstructure;
 
 	@SuppressWarnings("unused") // Runs via CommandScheduler
@@ -69,8 +71,9 @@ public class RobotContainer {
 			m_intake = new IntakeSubsystem();
 			m_hopper = new HopperSubsystem();
 			m_kicker = new KickerSubsystem();
+			m_led = new LEDSubsystem();
 			m_superstructure = new Superstructure(
-					m_shooter, m_turret, m_hood, m_intake, m_hopper, m_kicker);
+					m_shooter, m_turret, m_hood, m_intake, m_hopper, m_kicker, m_led);
 		} else {
 			System.out.println("*** CHASSIS-ONLY MODE — mechanisms disabled ***");
 			m_shooter = null;
@@ -79,6 +82,7 @@ public class RobotContainer {
 			m_intake = null;
 			m_hopper = null;
 			m_kicker = null;
+			m_led = null;
 			m_superstructure = null;
 		}
 
@@ -117,7 +121,7 @@ public class RobotContainer {
 		}
 		PoseControls.configure(ControllerConstants.kPoseControllerPort, m_robotDrive);
 
-		// Zone-based auto-aim
+		// Zone-based auto-aim & pre-spin
 		if (m_superstructure != null) {
 			onAllianceChanged(getAlliance());
 			new Trigger(() -> getAlliance() != currentAlliance)
@@ -126,6 +130,11 @@ public class RobotContainer {
 					.onChange(Commands.runOnce(this::onZoneChanged).ignoringDisable(true));
 			new Trigger(this::isOnAllianceOutpostSide)
 					.onChange(Commands.runOnce(this::onZoneChanged).ignoringDisable(true));
+
+			// Pre-Spin toggle: active when NOT in our own defensive zone (meaning we are crossing field to shoot)
+			new Trigger(this::isInAllianceZone).negate()
+					.onChange(Commands.runOnce(() -> m_superstructure.setPreSpinActive(!isInAllianceZone()))
+					.ignoringDisable(true));
 		}
 
 		DriverStation.silenceJoystickConnectionWarning(true);
