@@ -314,16 +314,16 @@ public class TurretSubsystem extends SubsystemBase {
   public void periodic() {
     turret.updateTelemetry();
     
-    // Seed the internal NEO spark encoder to prevent drift, utilizing our infinite-res absolute vernier position.
-    // The NEO Encoder setPosition() expects mechanism Rotations according to the SparkMaxConfig, 
-    // or Motor Rotations if gear ratio isn't set. Since YAMS manages gearing outside of the SparkMax API generally:
-    // We pass mechanism rotations: angle / 360 * Total Gear Ratio -> 40.0
-    double absAngleDeg = getAbsoluteTurretAngleDegrees();
-    spark.getEncoder().setPosition((absAngleDeg / 360.0) * TurretConstants.kGearRatio);
+    // Seed NEO encoder from absolute Vernier position (only if encoders are connected).
+    // Without this guard, disconnected encoders would continuously reset the NEO to a wrong angle.
+    if (encoderA.isConnected() && encoderB.isConnected()) {
+      double absAngleDeg = getAbsoluteTurretAngleDegrees();
+      spark.getEncoder().setPosition((absAngleDeg / 360.0) * TurretConstants.kGearRatio);
+      Logger.recordOutput("Turret/AbsoluteAngleDeg", absAngleDeg);
+    }
 
-    // Log turret pose for AdvantageScope 3D visualization
     Logger.recordOutput("Turret/AngleDegrees", getRawAngle().in(Degrees));
-    Logger.recordOutput("Turret/AbsoluteAngleDeg", absAngleDeg);
+    Logger.recordOutput("Turret/VernierConnected", encoderA.isConnected() && encoderB.isConnected());
     Logger.recordOutput("ASCalibration/FinalComponentPoses", new Pose3d[] {
         new Pose3d(
             TURRET_TRANSLATION,
