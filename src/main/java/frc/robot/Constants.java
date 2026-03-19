@@ -18,7 +18,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 public final class Constants {
 
   /** Set true when running on a bare chassis (no mechanism motors wired). */
-  public static final boolean kChassisOnly = false;
+  public static final boolean kChassisOnly = true;
 
   public static final int kSetXButton = XboxController.Button.kRightBumper.value;
 
