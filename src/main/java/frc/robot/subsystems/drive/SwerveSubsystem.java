@@ -4,6 +4,8 @@
 
 package frc.robot.subsystems.drive;
 
+import static edu.wpi.first.units.Units.*;
+
 import java.io.File;
 
 import org.littletonrobotics.junction.Logger;
@@ -16,6 +18,7 @@ import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.swerve.SwerveSetpoint;
 import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
 
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -32,10 +35,13 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.AutoConstants;
 import swervelib.SwerveInputStream;
 import swervelib.SwerveDrive;
+import swervelib.SwerveModule;
 import swervelib.parser.SwerveParser;
 import swervelib.telemetry.SwerveDriveTelemetry;
 import swervelib.telemetry.SwerveDriveTelemetry.TelemetryVerbosity;
@@ -103,6 +109,11 @@ public class SwerveSubsystem extends SubsystemBase {
     // Module auto-sync: re-synchronizes relative encoders with absolute encoders
     // when modules are stationary. 3° tolerance before a sync is triggered.
     swerveDrive.setModuleEncoderAutoSynchronize(true, 3);
+
+    // Drive motor feedforward from SysId characterization (values in volts).
+    // Uses WPILib SimpleMotorFeedforward which handles kS (static friction).
+    swerveDrive.replaceSwerveModuleFeedforward(
+        new SimpleMotorFeedforward(0.097, 2.557, 0.222));
 
     // ==================== PathPlanner ====================
     try {
@@ -346,6 +357,85 @@ public class SwerveSubsystem extends SubsystemBase {
 
   public double getTurnRate() {
     return swerveDrive.getGyro().getYawAngularVelocity().magnitude();
+  }
+
+  // ==================== SysId ====================
+
+  /**
+   * Returns a SysId command sequence for the drive motors.
+   * Locks all modules to 0° and ramps voltage on drive motors.
+   * Log the .wpilog file and open in SysId tool to extract kS, kV, kA.
+   */
+  public Command sysIdDriveMotors() {
+    SysIdRoutine routine = new SysIdRoutine(
+        new SysIdRoutine.Config(
+            Volts.of(1).per(Second), // ramp rate
+            Volts.of(7),             // step voltage
+            Seconds.of(10)),         // timeout
+        new SysIdRoutine.Mechanism(
+            voltage -> {
+              for (SwerveModule mod : swerveDrive.getModules()) {
+                mod.getAngleMotor().setVoltage(0); // lock steering straight
+                mod.getDriveMotor().setVoltage(voltage.in(Volts));
+              }
+            },
+            log -> {
+              for (SwerveModule mod : swerveDrive.getModules()) {
+                log.motor("drive-" + mod.moduleNumber)
+                    .voltage(Volts.of(mod.getDriveMotor().getVoltage()))
+                    .linearPosition(Meters.of(mod.getDriveMotor().getPosition()))
+                    .linearVelocity(MetersPerSecond.of(mod.getDriveMotor().getVelocity()));
+              }
+            },
+            this));
+
+    return Commands.sequence(
+        routine.quasistatic(SysIdRoutine.Direction.kForward),
+        Commands.waitSeconds(1),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse),
+        Commands.waitSeconds(1),
+        routine.dynamic(SysIdRoutine.Direction.kForward),
+        Commands.waitSeconds(1),
+        routine.dynamic(SysIdRoutine.Direction.kReverse)
+    ).withName("SysId Drive Motors");
+  }
+
+  /**
+   * Returns a SysId command sequence for the angle (steering) motors.
+   * Stops drive motors and ramps voltage on angle motors.
+   */
+  public Command sysIdAngleMotors() {
+    SysIdRoutine routine = new SysIdRoutine(
+        new SysIdRoutine.Config(
+            Volts.of(0.5).per(Second), // slower ramp for angle
+            Volts.of(4),               // lower step voltage
+            Seconds.of(10)),           // timeout
+        new SysIdRoutine.Mechanism(
+            voltage -> {
+              for (SwerveModule mod : swerveDrive.getModules()) {
+                mod.getDriveMotor().setVoltage(0); // stop driving
+                mod.getAngleMotor().setVoltage(voltage.in(Volts));
+              }
+            },
+            log -> {
+              for (SwerveModule mod : swerveDrive.getModules()) {
+                log.motor("angle-" + mod.moduleNumber)
+                    .voltage(Volts.of(mod.getAngleMotor().getVoltage()))
+                    .angularPosition(Degrees.of(mod.getAngleMotor().getPosition()))
+                    .angularVelocity(DegreesPerSecond.of(mod.getAngleMotor().getVelocity()));
+              }
+            },
+            this));
+
+    return Commands.sequence(
+        routine.quasistatic(SysIdRoutine.Direction.kForward),
+        Commands.waitSeconds(1),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse),
+        Commands.waitSeconds(1),
+        routine.dynamic(SysIdRoutine.Direction.kForward),
+        Commands.waitSeconds(1),
+        routine.dynamic(SysIdRoutine.Direction.kReverse)
+    ).withName("SysId Angle Motors");
   }
 
   @Override
