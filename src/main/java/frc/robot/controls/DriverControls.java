@@ -44,7 +44,7 @@ public class DriverControls {
   private static CommandXboxController controller;
   private static SwerveInputStream driveInputStream;
   private static SwerveInputStream driveInputStreamSlow;
-  private static final double SLOW_MODE_SCALE = 0.5;
+  private static final double SLOW_MODE_SCALE = 0.35;
 
   public static void configure(int port, SwerveSubsystem drivetrain) {
     configure(port, drivetrain, null);
@@ -87,6 +87,7 @@ public class DriverControls {
         .robotRelative(false)
         .allianceRelativeControl(true)
         .scaleTranslation(ControllerConstants.kDriveSpeedScale * SLOW_MODE_SCALE)
+        .scaleRotation(SLOW_MODE_SCALE)
         .deadband(ControllerConstants.kDeadband);
 
     // Default command
