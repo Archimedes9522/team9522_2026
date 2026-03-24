@@ -41,10 +41,6 @@ public class OperatorControls {
   public static void configure(int port, SwerveSubsystem drivetrain, Superstructure superstructure) {
     controller = new CommandXboxController(port);
 
-    // Rezero
-    controller.start()
-        .onTrue(superstructure.rezeroIntakePivotAndTurretCommand().ignoringDisable(true));
-
     // Intake
     controller.rightBumper()
         .whileTrue(superstructure.setIntakeDeployAndRoll().withName("OperatorControls.intake"));

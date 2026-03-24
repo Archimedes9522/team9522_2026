@@ -144,6 +144,9 @@ public class RobotContainer {
 		autoChooser.setDefaultOption("Do Nothing", Commands.none().withName("Do Nothing"));
 		autoChooser.addOption("[SysId] Swerve Drive Motors", m_robotDrive.sysIdDriveMotors());
 		autoChooser.addOption("[SysId] Swerve Angle Motors", m_robotDrive.sysIdAngleMotors());
+		if (m_superstructure != null) {
+			autoChooser.addOption("[Setup] Rezero Turret + Intake", m_superstructure.rezeroIntakePivotAndTurretCommand());
+		}
 		if (m_turret != null) {
 			autoChooser.addOption("[Calibration] Turret Vernier", m_turret.calibrateVernierCommand());
 			autoChooser.addOption("[SysId] Turret", m_turret.sysId());
