@@ -18,7 +18,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 public final class Constants {
 
   /** Set true when running on a bare chassis (no mechanism motors wired). */
-  public static final boolean kChassisOnly = true;
+  public static final boolean kChassisOnly = false;
 
   public static final int kSetXButton = XboxController.Button.kRightBumper.value;
 
@@ -106,8 +106,8 @@ public final class Constants {
     // Calibration: center turret at 0°, run "[Calibration] Turret Vernier" auto, copy offsets here.
     public static final int kEncoderAChannel = 0;
     public static final int kEncoderBChannel = 1;
-    public static final double kEncoderAOffset = 0.0;
-    public static final double kEncoderBOffset = 0.0;
+    public static final double kEncoderAOffset = 0.15505230387630758;
+    public static final double kEncoderBOffset = 0.1861345796533645;
 
     public static final double kMaxAngleDegrees = 80.0;
     public static final double kMinAngleDegrees = -80.0;
@@ -122,10 +122,10 @@ public final class Constants {
     public static final double kI = 0.0;
     public static final double kD = 4.0;
 
-    // Feedforward from SysId
-    public static final double kS = 0.61972;
-    public static final double kV = 3.364;
-    public static final double kA = 0.67293;
+    // Feedforward from SysId (radians, 2026-03-25)
+    public static final double kS = 0.64994;
+    public static final double kV = 3.2495;
+    public static final double kA = 0.71805;
     public static final double kG = 0.30435; // Horizontal turret — not actively used
   }
 

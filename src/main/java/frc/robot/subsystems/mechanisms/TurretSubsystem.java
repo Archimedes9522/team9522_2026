@@ -9,11 +9,13 @@ import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
 import static edu.wpi.first.units.Units.KilogramSquareMeters;
 
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
@@ -48,31 +50,36 @@ import yams.motorcontrollers.SmartMotorControllerConfig.ControlMode;
 import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
 import yams.motorcontrollers.SmartMotorControllerConfig.TelemetryVerbosity;
 import yams.motorcontrollers.local.SparkWrapper;
+import yams.units.EasyCRT;
+import yams.units.EasyCRTConfig;
 
 /**
- * Turret subsystem using YAMS Pivot for position control.
- *
- * <p>The turret rotates the shooter to aim at the hub.
- * Has a ±90° field of view for targeting flexibility.
+ * Turret subsystem using YAMS Pivot for position control and EasyCRT for
+ * absolute position via 19t/21t Vernier encoders on the 200t turret ring.
  *
  * <p>Hardware:
  * <ul>
  *   <li>1x NEO motor (SparkMax)</li>
- *   <li>40:1 gear reduction (4:1 REV Sport Gearbox × 200:20 gear transmission)</li>
+ *   <li>40:1 gear reduction (4:1 REV Sport Gearbox x 200:20 gear transmission)</li>
+ *   <li>2x REV Through Bore Encoders (19t and 21t gears on 200t ring, CRT for absolute position)</li>
  *   <li>Non-continuous rotation (limited travel)</li>
  * </ul>
  *
- * <p>Position is tracked via the NEO's internal encoder. Use the rezero command
- * (Start button) when the turret is physically centered before a match.
+ * <p>At startup, the EasyCRT solver computes the absolute turret angle from the
+ * two Vernier encoders and seeds the motor encoder. During operation, the motor
+ * encoder tracks normally without continuous CRT interference.
  */
 public class TurretSubsystem extends SubsystemBase {
 
   /** Maximum rotation in one direction (degrees) */
   private static final double MAX_ONE_DIR_FOV = TurretConstants.kMaxAngleDegrees;
-  
+
   /** Turret position relative to robot center (meters) */
   public static final Translation3d TURRET_TRANSLATION = new Translation3d(-0.205, 0.0, 0.375);
-  
+
+  /** Threshold in degrees before reseeding motor encoder from CRT */
+  private static final double RESEED_THRESHOLD_DEG = 5.0;
+
   // === HARDWARE ===
   private final SparkMax spark;
 
@@ -81,8 +88,9 @@ public class TurretSubsystem extends SubsystemBase {
   private final Pivot turret;
 
   // === ABSOLUTE ENCODERS (VERNIER) ===
-  private final DutyCycleEncoder encoderA; // 19t gear, DIO 0 (kEncoderAChannel)
-  private final DutyCycleEncoder encoderB; // 21t gear, DIO 1 (kEncoderBChannel)
+  private final DutyCycleEncoder encoderA; // 19t gear, DIO 0
+  private final DutyCycleEncoder encoderB; // 21t gear, DIO 1
+  private final EasyCRT crtSolver;
 
   /**
    * Creates a new TurretSubsystem.
@@ -104,7 +112,23 @@ public class TurretSubsystem extends SubsystemBase {
     encoderA = new DutyCycleEncoder(TurretConstants.kEncoderAChannel);
     encoderB = new DutyCycleEncoder(TurretConstants.kEncoderBChannel);
 
-    // Configure YAMS SmartMotorController — all values matching CA26
+    // Configure YAMS EasyCRT for absolute position from 19t/21t Vernier encoders
+    // Encoders mesh directly with the 200t turret ring (commonRatio = 1.0)
+    EasyCRTConfig crtConfig = new EasyCRTConfig(
+            () -> Rotations.of(encoderA.get()),
+            () -> Rotations.of(encoderB.get()))
+        .withCommonDriveGear(1.0, 200, 19, 21)
+        .withAbsoluteEncoderOffsets(
+            Rotations.of(-TurretConstants.kEncoderAOffset),
+            Rotations.of(-TurretConstants.kEncoderBOffset))
+        .withMechanismRange(
+            Degrees.of(-MAX_ONE_DIR_FOV - 10),
+            Degrees.of(MAX_ONE_DIR_FOV + 10))
+        .withAbsoluteEncoderInversions(false, false);
+
+    crtSolver = new EasyCRT(crtConfig);
+
+    // Configure YAMS SmartMotorController
     SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
         .withControlMode(ControlMode.CLOSED_LOOP)
         .withClosedLoopController(
@@ -115,8 +139,8 @@ public class TurretSubsystem extends SubsystemBase {
             DegreesPerSecondPerSecond.of(TurretConstants.kMaxAccelDegPerSecSq))
         .withFeedforward(new SimpleMotorFeedforward(TurretConstants.kS, TurretConstants.kV, TurretConstants.kA))
         .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
-  .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
-  .withMotorInverted(true)
+        .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
+        .withMotorInverted(false)
         .withIdleMode(MotorMode.COAST)
         .withSoftLimit(Degrees.of(-MAX_ONE_DIR_FOV), Degrees.of(MAX_ONE_DIR_FOV))
         .withStatorCurrentLimit(Amps.of(TurretConstants.kCurrentLimitAmps))
@@ -125,10 +149,25 @@ public class TurretSubsystem extends SubsystemBase {
 
     motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
 
-    // Starting position is 0° — the absolute Vernier encoders override this every periodic cycle.
+    // Starting position — seed from CRT if encoders are connected, otherwise 0°
+    Angle startingPosition = Degrees.of(0);
+    if (encoderA.isConnected() && encoderB.isConnected()) {
+      Optional<Angle> crtAngle = crtSolver.getAngleOptional();
+      if (crtAngle.isPresent()) {
+        startingPosition = crtAngle.get();
+        System.out.println("[Turret] CRT startup seed: " + startingPosition.in(Degrees) + "°"
+            + " (status=" + crtSolver.getLastStatus() + ")");
+      } else {
+        System.out.println("[Turret] CRT solve failed at startup (status=" + crtSolver.getLastStatus()
+            + "), defaulting to 0°");
+      }
+    } else {
+      System.out.println("[Turret] Vernier encoders not connected, defaulting to 0°");
+    }
+
     PivotConfig turretConfig = new PivotConfig(motorController)
         .withHardLimit(Degrees.of(-MAX_ONE_DIR_FOV - 5), Degrees.of(MAX_ONE_DIR_FOV + 5))
-        .withStartingPosition(Degrees.of(0))
+        .withStartingPosition(startingPosition)
         .withMOI(KilogramSquareMeters.of(0.05))
         .withTelemetry("Turret", TelemetryVerbosity.HIGH)
         .withMechanismPositionConfig(
@@ -138,30 +177,25 @@ public class TurretSubsystem extends SubsystemBase {
 
     turret = new Pivot(turretConfig);
   }
-  
+
   // ==================== COMMANDS ====================
 
   /**
    * Directly sets the turret target angle. Call this every loop when doing
    * dynamic aiming from a command that already requires this subsystem.
-   * 
-   * <p>This method directly controls the motor without creating a command,
-   * so it can be called from within another command's execute() method.
-   * 
+   *
    * @param angle Target angle (0 = turret forward, positive = left, negative = right)
    *              Note: turret forward points toward the robot rear due to backwards mounting.
    */
   public void setTargetAngle(Angle angle) {
-    // Clamp to soft limits
     double angleDeg = angle.in(Degrees);
     double clampedDeg = Math.max(-MAX_ONE_DIR_FOV, Math.min(MAX_ONE_DIR_FOV, angleDeg));
-    // Use direct motor control instead of scheduling a command to avoid conflicts
     motorController.setPosition(Degrees.of(clampedDeg));
   }
 
   /**
    * Sets the turret to a specific angle.
-   * 
+   *
    * @param angle Target angle (0 = forward, positive = clockwise)
    * @return Command that moves to the angle
    */
@@ -171,8 +205,7 @@ public class TurretSubsystem extends SubsystemBase {
 
   /**
    * Sets the turret to a dynamic angle from a supplier.
-   * Useful for auto-aiming where target angle changes.
-   * 
+   *
    * @param turretAngleSupplier Supplier that provides target angle
    * @return Command that continuously updates angle
    */
@@ -181,8 +214,8 @@ public class TurretSubsystem extends SubsystemBase {
   }
 
   /**
-   * Centers the turret (returns to 0°).
-   * 
+   * Centers the turret (returns to 0 degrees).
+   *
    * @return Command that centers the turret
    */
   public Command center() {
@@ -191,7 +224,7 @@ public class TurretSubsystem extends SubsystemBase {
 
   /**
    * Sets the turret to open-loop duty cycle control.
-   * 
+   *
    * @param dutyCycle Motor output (-1 to 1)
    * @return Command that applies the duty cycle
    */
@@ -200,19 +233,30 @@ public class TurretSubsystem extends SubsystemBase {
   }
 
   /**
-   * Resets the turret encoder to zero.
-   * Use when turret is physically at the center position.
-   * 
-   * @return Command that resets the encoder
+   * Reseeds the motor encoder from the CRT absolute position.
+   * Falls back to zeroing if the CRT can't solve.
+   *
+   * @return Command that reseeds the encoder
    */
   public Command rezero() {
-    return Commands.runOnce(() -> spark.getEncoder().setPosition(0), this)
-        .withName("Turret.Rezero");
+    return Commands.runOnce(() -> {
+      if (encoderA.isConnected() && encoderB.isConnected()) {
+        Optional<Angle> crtAngle = crtSolver.getAngleOptional();
+        if (crtAngle.isPresent()) {
+          motorController.setEncoderPosition(crtAngle.get());
+          System.out.println("[Turret] Rezeroed from CRT: " + crtAngle.get().in(Degrees) + "°");
+          return;
+        }
+      }
+      // Fallback: manual zero (turret must be physically centered)
+      motorController.setEncoderPosition(Degrees.of(0));
+      System.out.println("[Turret] Rezeroed to 0° (CRT unavailable)");
+    }, this).withName("Turret.Rezero");
   }
 
   /**
    * Reads raw absolute fractions from Encoder A and B and prints them.
-   * Copy the output of this command into Constants.java offset values when the turret is perfectly centered at 0.
+   * Copy the output into Constants.java offset values when the turret is perfectly centered at 0.
    */
   public Command calibrateVernierCommand() {
     return Commands.runOnce(() -> {
@@ -224,63 +268,21 @@ public class TurretSubsystem extends SubsystemBase {
   }
 
   /**
-   * Computes the absolute turret angle perfectly utilizing the 19t/21t coprime Vernier mechanism
-   * via the Chinese Remainder Theorem (CRT).
-   */
-  public double getAbsoluteTurretAngleDegrees() {
-      // 1. Read absolute fraction [0.0, 1.0) from both encoders
-      double rawA = encoderA.get();
-      double rawB = encoderB.get();
-
-      // 2. Apply calibration offsets
-      // Adding 1.0 before modulus ensures we don't accidentally modulo a negative number incorrectly
-      double a = (rawA - TurretConstants.kEncoderAOffset + 1.0) % 1.0;
-      double b = (rawB - TurretConstants.kEncoderBOffset + 1.0) % 1.0;
-
-      // 3. Application of the Chinese Remainder Theorem (CRT)
-      // The true position P (in teeth) modulo 19x21=399 must satisfy:
-      // P = 19 * K_a + 19 * a 
-      // P = 21 * K_b + 21 * b
-      // Setting them equal gives: 19 * K_a - 21 * K_b = 21 * b - 19 * a
-      // Since K_a and K_b are integers, (21 * b - 19 * a) must perfectly represent the integer difference (plus noise).
-      long I = Math.round(21.0 * b - 19.0 * a);
-
-      // 4. Solve for K_a modulo 21
-      // We have 19 * K_a ≡ I (mod 21) -> -2 * K_a ≡ I (mod 21)
-      // Multiply by the modular inverse of -2 (which is 10 modulo 21):
-      // K_a ≡ 10 * I (mod 21)
-      long kA = Math.floorMod(10 * I, 21);
-
-      // 5. Calculate fine turret position in teeth based off the high-res Encoder A reading
-      double teethFine = 19.0 * (kA + a);
-
-      // 6. Wrap to [-199.5, 199.5) because the period of the Vernier mechanism is 399 teeth
-      // This is crucial for negative angles (e.g. going left of 0) where teethFine would otherwise be ~398
-      if (teethFine >= 399.0 / 2.0) {
-          teethFine -= 399.0;
-      }
-
-      // 7. Convert from teeth to final degrees (Turret has 200 teeth)
-      double angleDegrees = teethFine * (360.0 / 200.0);
-
-      return angleDegrees;
-  }
-
-  /**
    * Runs system identification for tuning.
-   * 
+   *
    * @return SysId command sequence
    */
   public Command sysId() {
-    return turret.sysId(Volts.of(7), Volts.of(2).per(Second), Seconds.of(10));
+    return turret.sysId(Volts.of(7), Volts.of(2).per(Second), Seconds.of(10))
+        .withName("Turret.SysId");
   }
 
   // ==================== GETTERS ====================
 
   /**
    * Gets the turret angle adjusted for robot coordinate frame.
-   * Since the turret may be mounted backwards, this adds 180° offset.
-   * 
+   * Since the turret is mounted backwards, this adds 180 degrees offset.
+   *
    * @return Angle in robot frame
    */
   public Angle getRobotAdjustedAngle() {
@@ -289,7 +291,7 @@ public class TurretSubsystem extends SubsystemBase {
 
   /**
    * Gets the raw turret angle without adjustment.
-   * 
+   *
    * @return Raw angle from encoder
    */
   public Angle getRawAngle() {
@@ -298,7 +300,7 @@ public class TurretSubsystem extends SubsystemBase {
 
   /**
    * Checks if the turret is at the target angle (within tolerance).
-   * 
+   *
    * @param targetDegrees Target angle in degrees
    * @param toleranceDegrees Acceptable error in degrees
    * @return True if at target
@@ -313,17 +315,36 @@ public class TurretSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     turret.updateTelemetry();
-    
-    // Seed NEO encoder from absolute Vernier position (only if encoders are connected).
-    // Without this guard, disconnected encoders would continuously reset the NEO to a wrong angle.
-    if (encoderA.isConnected() && encoderB.isConnected()) {
-      double absAngleDeg = getAbsoluteTurretAngleDegrees();
-      spark.getEncoder().setPosition((absAngleDeg / 360.0) * TurretConstants.kGearRatio);
-      Logger.recordOutput("Turret/AbsoluteAngleDeg", absAngleDeg);
+
+    boolean connected = encoderA.isConnected() && encoderB.isConnected();
+
+    if (connected) {
+      // Solve CRT for absolute angle
+      Optional<Angle> crtAngle = crtSolver.getAngleOptional();
+      double crtDeg = crtAngle.map(a -> a.in(Degrees)).orElse(Double.NaN);
+      double yamsDeg = turret.getAngle().in(Degrees);
+
+      Logger.recordOutput("Turret/CRT/AngleDeg", crtDeg);
+      Logger.recordOutput("Turret/CRT/Status", crtSolver.getLastStatus().name());
+      Logger.recordOutput("Turret/CRT/ErrorRot", crtSolver.getLastErrorRotations());
+      Logger.recordOutput("Turret/Vernier/RawA", encoderA.get());
+      Logger.recordOutput("Turret/Vernier/RawB", encoderB.get());
+
+      // Threshold-based reseeding: only correct if CRT and YAMS disagree significantly
+      if (crtAngle.isPresent()) {
+        double errorDeg = Math.abs(crtDeg - yamsDeg);
+        Logger.recordOutput("Turret/CRT/VsYamsErrorDeg", errorDeg);
+        if (errorDeg > RESEED_THRESHOLD_DEG) {
+          motorController.setEncoderPosition(crtAngle.get());
+          Logger.recordOutput("Turret/CRT/Reseeded", true);
+        } else {
+          Logger.recordOutput("Turret/CRT/Reseeded", false);
+        }
+      }
     }
 
     Logger.recordOutput("Turret/AngleDegrees", getRawAngle().in(Degrees));
-    Logger.recordOutput("Turret/VernierConnected", encoderA.isConnected() && encoderB.isConnected());
+    Logger.recordOutput("Turret/VernierConnected", connected);
     Logger.recordOutput("ASCalibration/FinalComponentPoses", new Pose3d[] {
         new Pose3d(
             TURRET_TRANSLATION,
