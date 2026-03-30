@@ -77,8 +77,12 @@ public class TurretSubsystem extends SubsystemBase {
   /** Turret position relative to robot center (meters) */
   public static final Translation3d TURRET_TRANSLATION = new Translation3d(-0.205, 0.0, 0.375);
 
-  /** Threshold in degrees before reseeding motor encoder from CRT */
+  /** CRT disagreement must exceed this to be considered for a reseed (degrees) */
   private static final double RESEED_THRESHOLD_DEG = 5.0;
+  /** Turret velocity must be below this to allow a reseed (degrees/sec) */
+  private static final double RESEED_MAX_VELOCITY_DEG_PER_SEC = 5.0;
+  /** CRT reading must be stable for this many consecutive cycles before reseeding */
+  private static final int RESEED_STABLE_CYCLES = 5;
 
   // === HARDWARE ===
   private final SparkMax spark;
@@ -91,6 +95,10 @@ public class TurretSubsystem extends SubsystemBase {
   private final DutyCycleEncoder encoderA; // 19t gear, DIO 0
   private final DutyCycleEncoder encoderB; // 21t gear, DIO 1
   private final EasyCRT crtSolver;
+
+  // === CRT RESEED STATE ===
+  private double lastCrtDeg = Double.NaN;
+  private int crtStableCycles = 0;
 
   /**
    * Creates a new TurretSubsystem.
@@ -330,14 +338,38 @@ public class TurretSubsystem extends SubsystemBase {
       Logger.recordOutput("Turret/Vernier/RawA", encoderA.get());
       Logger.recordOutput("Turret/Vernier/RawB", encoderB.get());
 
-      // Log CRT vs YAMS disagreement for diagnostics — do NOT reseed here.
-      // Reseeding mid-PID-cycle causes the controller to see a sudden position jump
-      // and respond with a large correction pulse, producing oscillation/vibration.
-      // Reseeding only happens at startup (withStartingPosition) and via rezero().
+      // Stationary-only reseed: correct encoder drift without disturbing the PID.
+      // Conditions: CRT solved, disagreement > threshold, turret nearly stopped,
+      // AND CRT reading has been stable (consistent) for several consecutive cycles.
+      // This prevents mid-movement reseeds that cause sudden encoder jumps and oscillation.
       if (crtAngle.isPresent()) {
         double errorDeg = Math.abs(crtDeg - yamsDeg);
+        // spark.getEncoder().getVelocity() returns motor RPM (brushless).
+        // Convert to mechanism deg/sec: RPM × (360°/rot) / (40:1 gear) / (60 s/min)
+        double velocityDegPerSec = Math.abs(spark.getEncoder().getVelocity() * 360.0 / (TurretConstants.kGearRatio * 60.0));
         Logger.recordOutput("Turret/CRT/VsYamsErrorDeg", errorDeg);
-        Logger.recordOutput("Turret/CRT/Reseeded", false);
+
+        // Check CRT reading stability (consecutive cycles within threshold of each other)
+        if (!Double.isNaN(lastCrtDeg) && Math.abs(crtDeg - lastCrtDeg) < RESEED_THRESHOLD_DEG) {
+          crtStableCycles++;
+        } else {
+          crtStableCycles = 0;
+        }
+        lastCrtDeg = crtDeg;
+
+        boolean shouldReseed = errorDeg > RESEED_THRESHOLD_DEG
+            && velocityDegPerSec < RESEED_MAX_VELOCITY_DEG_PER_SEC
+            && crtStableCycles >= RESEED_STABLE_CYCLES;
+
+        if (shouldReseed) {
+          motorController.setEncoderPosition(crtAngle.get());
+          crtStableCycles = 0; // reset after reseeding
+          Logger.recordOutput("Turret/CRT/Reseeded", true);
+        } else {
+          Logger.recordOutput("Turret/CRT/Reseeded", false);
+        }
+        Logger.recordOutput("Turret/CRT/StableCycles", crtStableCycles);
+        Logger.recordOutput("Turret/CRT/VelocityDegPerSec", velocityDegPerSec);
       }
     }
 
