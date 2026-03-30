@@ -140,7 +140,7 @@ public class TurretSubsystem extends SubsystemBase {
         .withFeedforward(new SimpleMotorFeedforward(TurretConstants.kS, TurretConstants.kV, TurretConstants.kA))
         .withTelemetry("TurretMotor", TelemetryVerbosity.HIGH)
         .withGearing(new MechanismGearing(GearBox.fromReductionStages(4, 10)))  // 40:1 total
-        .withMotorInverted(false)
+        .withMotorInverted(true)
         .withIdleMode(MotorMode.COAST)
         .withSoftLimit(Degrees.of(-MAX_ONE_DIR_FOV), Degrees.of(MAX_ONE_DIR_FOV))
         .withStatorCurrentLimit(Amps.of(TurretConstants.kCurrentLimitAmps))
@@ -330,16 +330,14 @@ public class TurretSubsystem extends SubsystemBase {
       Logger.recordOutput("Turret/Vernier/RawA", encoderA.get());
       Logger.recordOutput("Turret/Vernier/RawB", encoderB.get());
 
-      // Threshold-based reseeding: only correct if CRT and YAMS disagree significantly
+      // Log CRT vs YAMS disagreement for diagnostics — do NOT reseed here.
+      // Reseeding mid-PID-cycle causes the controller to see a sudden position jump
+      // and respond with a large correction pulse, producing oscillation/vibration.
+      // Reseeding only happens at startup (withStartingPosition) and via rezero().
       if (crtAngle.isPresent()) {
         double errorDeg = Math.abs(crtDeg - yamsDeg);
         Logger.recordOutput("Turret/CRT/VsYamsErrorDeg", errorDeg);
-        if (errorDeg > RESEED_THRESHOLD_DEG) {
-          motorController.setEncoderPosition(crtAngle.get());
-          Logger.recordOutput("Turret/CRT/Reseeded", true);
-        } else {
-          Logger.recordOutput("Turret/CRT/Reseeded", false);
-        }
+        Logger.recordOutput("Turret/CRT/Reseeded", false);
       }
     }
 
