@@ -14,6 +14,7 @@ Java command-based robot code for a **swerve-drive robot with a turreted shooter
 ## Table of Contents
 
 - [Technologies](#technologies)
+- [Key Features](#key-features)
 - [Project Structure](#project-structure)
 - [Building & Deploying](#building--deploying)
 - [Chassis-Only Mode](#chassis-only-mode)
@@ -44,6 +45,16 @@ Java command-based robot code for a **swerve-drive robot with a turreted shooter
 
 ---
 
+## Key Features
+
+- **Vernier Absolute Encoders (Turret):** Utilizes dual absolute encoders (19t and 21t gears) and the Chinese Remainder Theorem (CRT) via `EasyCRT` to provide infinite-resolution absolute tracking of the turret without relying on hard stops or manual rezeroing mid-match.
+- **Addressable LED Feedback:** A dedicated `LEDSubsystem` drives WS2812B LEDs to provide the drive team with instant visual feedback (e.g., solid orange for game piece acquired, fast blinking green for target locked).
+- **Odometry-Based Pre-Spin:** Automatically idles the shooter flywheel to 3000 RPM as soon as the robot crosses into its offensive zone, dropping time-to-shoot to near-zero.
+- **Zone-Based Auto-Aim:** Dynamically selects the best target (Hub, Outpost, or Far Side) depending on the robot's real-time field odometry.
+- **Seamless Hardware/Simulation Parity:** Run the exact same code on the physical robot and within MapleSim's high-fidelity rigid-body physics engine.
+
+---
+
 ## Project Structure
 
 ```
@@ -59,9 +70,10 @@ src/main/
     ├── Robot.java              # Robot lifecycle (AdvantageKit LoggedRobot)
     ├── RobotContainer.java     # Subsystem creation, command bindings
     ├── Constants.java          # All robot-wide constants & CAN IDs
+    ├── FieldConstants.java     # Named AimPoints & field geometry
     ├── BuildConstants.java     # Auto-generated build metadata
     ├── commands/
-    │   └── ShootOnTheMoveCommand.java
+    │   └── mechanisms/ShootOnTheMoveCommand.java
     ├── controls/
     │   ├── DriverControls.java     # Driver Xbox controller bindings
     │   ├── OperatorControls.java   # Operator Xbox controller bindings
@@ -72,11 +84,12 @@ src/main/
     │   ├── mechanisms/
     │   │   ├── Superstructure.java     # Coordinated mechanism manager
     │   │   ├── ShooterSubsystem.java   # Flywheel shooter
-    │   │   ├── TurretSubsystem.java    # Turret rotation
+    │   │   ├── TurretSubsystem.java    # Vernier CRT Turret rotation
     │   │   ├── HoodSubsystem.java      # Launch angle adjustment
     │   │   ├── IntakeSubsystem.java    # Ground intake
     │   │   ├── HopperSubsystem.java    # Game piece storage/transfer
-    │   │   └── KickerSubsystem.java    # Feeds game pieces to shooter
+    │   │   ├── KickerSubsystem.java    # Feeds game pieces to shooter
+    │   │   └── LEDSubsystem.java       # Addressable WS2812B feedback
     │   └── vision/
     │       ├── Vision.java
     │       ├── VisionConstants.java
@@ -96,26 +109,21 @@ src/main/
 This is a standard [GradleRIO](https://docs.wpilib.org/en/stable/docs/software/vscode-overview/deploying-robot-code.html) project. Use the included Gradle wrapper — no separate Gradle installation is required.
 
 ### Build
-
 ```shell
 ./gradlew build        # Linux / macOS
 .\gradlew.bat build    # Windows
 ```
 
 ### Deploy to Robot
-
 Connect to the robot's network, then:
-
 ```shell
 ./gradlew deploy
 ```
 
 ### Simulate
-
 ```shell
 ./gradlew simulateJava
 ```
-
 The simulation launches the WPILib Driver Station and supports full AdvantageScope visualization, including 3D field rendering via MapleSim.
 
 ---
@@ -125,20 +133,15 @@ The simulation launches the WPILib Driver Station and supports full AdvantageSco
 When testing with **only the swerve chassis** (no mechanism motors connected), robot startup can take 5+ minutes as each missing SparkMax times out on the CAN bus.
 
 To skip mechanism initialization and get a fast startup:
-
 1. Open `src/main/java/frc/robot/Constants.java`
-2. Set the flag at the top of the file:
-   ```java
-   public static final boolean kChassisOnly = true;
-   ```
+2. Set the flag at the top of the file: `public static final boolean kChassisOnly = true;`
 3. Build and deploy
 
 When `kChassisOnly` is `true`:
-- All mechanism subsystems (Shooter, Turret, Hood, Intake, Hopper, Kicker) are **not created**
-- The Superstructure coordinator is **not created**
-- Operator controls for mechanisms are **disabled**
-- Zone-based auto-aim triggers are **disabled**
-- The swerve drive, vision, and autonomous paths work normally
+- All mechanism subsystems, the Superstructure, and LEDs are **not created**.
+- Operator controls for mechanisms are **disabled**.
+- Zone-based auto-aim triggers are **disabled**.
+- The swerve drive, vision, and autonomous paths work normally.
 
 > **Remember to set `kChassisOnly = false` before competing with the full robot!**
 
@@ -147,23 +150,9 @@ When `kChassisOnly` is `true`:
 ## Configuration
 
 ### Constants
-
-All numerical values, CAN IDs, PID tuning parameters, and field positions live in [`Constants.java`](src/main/java/frc/robot/Constants.java). Key sections:
-
-| Section | Description |
-|---|---|
-| `ControllerConstants` | Joystick ports, deadband, speed limits |
-| `CANConstants` | CAN bus IDs for all motor controllers |
-| `ShooterConstants` | Shooter motor speeds, PID gains |
-| `TurretConstants` | Turret limits, PID gains |
-| `HoodConstants` | Hood angle limits |
-| `IntakeConstants` | Intake motor speeds |
-| `HopperConstants` | Hopper/kicker motor speeds |
-| `VisionConstants` | Camera positions, pipeline settings |
-| `AimPoints` | Named field positions for auto-aim targets |
+All numerical values, CAN IDs, PID tuning parameters, and field positions live in [`Constants.java`](src/main/java/frc/robot/Constants.java). Key sections include `ControllerConstants`, `ShooterConstants`, `TurretConstants`, etc. `FieldConstants.java` holds named `AimPoints`.
 
 ### Swerve Drive (YAGSL)
-
 The swerve drive is configured entirely through JSON files in `src/main/deploy/swerve/`:
 
 - **`swervedrive.json`** — Drive-wide settings: max speed, gyro type (NavX via MXP SPI), IMU orientation, module locations
@@ -176,11 +165,9 @@ Module offsets are set in degrees in each module's JSON file (`absoluteEncoderOf
 3. Set the offsets so each module reads 0° when wheels face forward
 
 ### Vision (PhotonVision)
-
 Camera configuration is in `VisionConstants.java`. The robot uses a PhotonVision coprocessor for AprilTag detection, providing field-relative pose estimates that are fused with wheel odometry in the swerve subsystem.
 
 ### Autonomous (PathPlanner)
-
 Autonomous routines are created in the PathPlanner GUI and stored in `src/main/deploy/pathplanner/`. Named commands are registered in `RobotContainer` and executed during autonomous via PathPlanner's auto builder.
 
 ---
@@ -188,11 +175,10 @@ Autonomous routines are created in the PathPlanner GUI and stored in `src/main/d
 ## Logging & Replay (AdvantageKit)
 
 The robot uses [AdvantageKit](https://github.com/Mechanical-Advantage/AdvantageKit) for deterministic logging:
-
 - `Robot.java` extends `LoggedRobot` instead of `TimedRobot`
 - All subsystem inputs/outputs are logged every cycle
-- `.wpilog` files are saved to the roboRIO's USB drive
-- Open log files in [AdvantageScope](https://github.com/Mechanical-Advantage/AdvantageScope) for full-match replay with complete data visibility
+- `.wpilog` files are saved to the roboRIO's USB drive (Format USB as FAT32, logs go to `/U/logs/`)
+- Open log files in [AdvantageScope](https://github.com/Mechanical-Advantage/AdvantageScope) for full-match replay with complete data visibility. Look for values like `Superstructure/ShooterPose` or `Turret/AbsoluteAngleDeg`.
 
 Vision subsystems follow the **IO Layer pattern**: a `VisionIO` interface with separate real (`VisionIOPhotonVision`) and sim (`VisionIOPhotonVisionSim`) implementations, enabling seamless switching between hardware and simulation.
 
@@ -200,15 +186,12 @@ Vision subsystems follow the **IO Layer pattern**: a `VisionIO` interface with s
 
 ## Simulation
 
-The project has extensive simulation support powered by **MapleSim**:
-
-- Full swerve drive physics simulation
+Extensive simulation support powered by **MapleSim**:
+- Full swerve drive rigid-body physics simulation
 - Mechanism motor simulation via YAMS
 - 2026 game field model (`Arena2026Rebuilt`)
 - PhotonVision camera simulation (`VisionIOPhotonVisionSim`)
 - AdvantageScope 3D visualization
-
-Run `./gradlew simulateJava` and connect with AdvantageScope and the WPILib Driver Station.
 
 ---
 
