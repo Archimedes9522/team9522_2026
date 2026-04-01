@@ -71,7 +71,7 @@ public class DriverControls {
         .scaleTranslation(ControllerConstants.kDriveSpeedScale)
         .deadband(ControllerConstants.kDeadband);
 
-    // Slow mode input stream (50% speed)
+    // Slow mode input stream
     driveInputStreamSlow = SwerveInputStream.of(
             drivetrain.getSwerveDrive(),
             () -> controller.getLeftY() * -1,
