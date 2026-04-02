@@ -117,15 +117,15 @@ public final class Constants {
     public static final double kMaxVelocityDegPerSec = 720.0;
     public static final double kMaxAccelDegPerSecSq = 1000.0;
 
-    // PID (SysId position loop, kD damped for YAMS)
-    public static final double kP = 5.9;
+    // PID (SysId position loop, kD hand-tuned — SysId Kd unreliable due to timestep jitter)
+    public static final double kP = 5.7975;
     public static final double kI = 0.0;
     public static final double kD = 4.0;
 
-    // Feedforward from SysId (radians, 2026-03-25)
-    public static final double kS = 0.64994;
-    public static final double kV = 3.2495;
-    public static final double kA = 0.71805;
+    // Feedforward from SysId (radians, 2026-04-01)
+    public static final double kS = 0.8682;
+    public static final double kV = 2.2943;
+    public static final double kA = 0.65936;
     public static final double kG = 0.30435; // Horizontal turret — not actively used
   }
 

@@ -9,6 +9,7 @@ import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
@@ -16,6 +17,7 @@ import static edu.wpi.first.units.Units.Volts;
 import static edu.wpi.first.units.Units.KilogramSquareMeters;
 
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
@@ -34,9 +36,11 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.TurretConstants;
 import yams.gearing.GearBox;
 import yams.gearing.MechanismGearing;
@@ -276,13 +280,75 @@ public class TurretSubsystem extends SubsystemBase {
   }
 
   /**
-   * Runs system identification for tuning.
+   * Runs system identification with reduced CAN jitter for better data quality.
+   * Bypasses YAMS and logs directly from SparkMax with fast CAN status frames (5ms)
+   * to ensure fresh encoder data every robot loop iteration.
    *
    * @return SysId command sequence
    */
   public Command sysId() {
-    return turret.sysId(Volts.of(7), Volts.of(2).per(Second), Seconds.of(10))
-        .withName("Turret.SysId");
+    final double gearRatio = TurretConstants.kGearRatio;
+    final double limitRad = Math.toRadians(MAX_ONE_DIR_FOV - 5); // 75° safety margin
+
+    SysIdRoutine routine = new SysIdRoutine(
+        new SysIdRoutine.Config(
+            Volts.of(0.5).per(Second), // Quasistatic ramp: 0.5 V/s (slow for more data)
+            Volts.of(4),               // Dynamic step: 4V
+            Seconds.of(10),            // Timeout
+            (state) -> Logger.recordOutput("Turret/SysIdState", state.toString())
+        ),
+        new SysIdRoutine.Mechanism(
+            (voltage) -> spark.setVoltage(voltage.in(Volts)),
+            (log) -> {
+              double motorPos = spark.getEncoder().getPosition();   // motor rotations
+              double motorVel = spark.getEncoder().getVelocity();   // motor RPM
+              log.motor("TurretMotor")
+                  .voltage(Volts.of(spark.getAppliedOutput() * spark.getBusVoltage()))
+                  .angularPosition(Radians.of(motorPos / gearRatio * 2.0 * Math.PI))
+                  .angularVelocity(RadiansPerSecond.of(motorVel / gearRatio * 2.0 * Math.PI / 60.0));
+            },
+            this
+        )
+    );
+
+    // Grace period prevents immediate stop when starting a test near a limit
+    final double[] testStartTime = {0};
+    BooleanSupplier atLimit = () -> {
+      if (Timer.getFPGATimestamp() - testStartTime[0] < 0.5) return false;
+      return Math.abs(turret.getAngle().in(Radians)) >= limitRad;
+    };
+
+    return Commands.sequence(
+        // Configure fast CAN status frames for consistent SysId data
+        Commands.runOnce(() -> {
+          SparkMaxConfig sysIdConfig = new SparkMaxConfig();
+          sysIdConfig.signals
+              .primaryEncoderPositionPeriodMs(5)
+              .primaryEncoderVelocityPeriodMs(5)
+              .appliedOutputPeriodMs(5);
+          spark.configure(sysIdConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+        }),
+        Commands.runOnce(motorController::stopClosedLoopController),
+        Commands.print("[Turret SysId] Starting — fast CAN frames enabled"),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kReverse).until(atLimit)
+    ).finallyDo(() -> {
+      // Restore default CAN status frame periods
+      SparkMaxConfig defaultConfig = new SparkMaxConfig();
+      defaultConfig.signals
+          .primaryEncoderPositionPeriodMs(20)
+          .primaryEncoderVelocityPeriodMs(20)
+          .appliedOutputPeriodMs(10);
+      spark.configure(defaultConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      motorController.startClosedLoopController();
+      System.out.println("[Turret SysId] Complete — CAN frames restored");
+    }).withName("Turret.SysId");
   }
 
   // ==================== GETTERS ====================
