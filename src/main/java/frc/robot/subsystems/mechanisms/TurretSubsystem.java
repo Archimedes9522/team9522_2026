@@ -284,6 +284,16 @@ public class TurretSubsystem extends SubsystemBase {
    * Bypasses YAMS and logs directly from SparkMax with fast CAN status frames (5ms)
    * to ensure fresh encoder data every robot loop iteration.
    *
+   * <p><b>How to run:</b>
+   * <ol>
+   *   <li>Select "[SysId] Turret" in the auto chooser, enable autonomous — all 4 tests run automatically.</li>
+   *   <li>Pull the .wpilog from the roboRIO USB drive.</li>
+   *   <li>Open WPILib SysId tool, load the .wpilog file.</li>
+   *   <li>Set units to <b>Radians</b>, analysis type to <b>Simple</b>,
+   *       Gain Preset to <b>REV Brushless Encoder Port</b>, Loop Type to <b>Position</b>.</li>
+   *   <li>Plug kS/kV/kA into {@link TurretConstants} feedforward, use kP/kD as PID starting point.</li>
+   * </ol>
+   *
    * @return SysId command sequence
    */
   public Command sysId() {
