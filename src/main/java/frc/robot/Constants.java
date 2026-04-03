@@ -122,10 +122,10 @@ public final class Constants {
     public static final double kI = 0.0;
     public static final double kD = 4.0;
 
-    // Feedforward from SysId (radians, 2026-04-01)
-    public static final double kS = 0.8682;
-    public static final double kV = 2.2943;
-    public static final double kA = 0.65936;
+    // Feedforward from SysId (radians, 2026-04-03)
+    public static final double kS = 0.2703;
+    public static final double kV = 3.5513;
+    public static final double kA = 0.66758;
     public static final double kG = 0.30435; // Horizontal turret — not actively used
   }
 

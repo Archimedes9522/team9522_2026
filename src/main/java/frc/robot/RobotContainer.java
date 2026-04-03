@@ -110,6 +110,9 @@ public class RobotContainer {
 						new VisionIO() {});
 				break;
 		}
+		// While disabled, hard-reset odometry from multi-tag vision so the heading
+		// is correct before the match starts regardless of which way the robot is facing.
+		m_vision.setPoseResetConsumer(m_robotDrive::resetOdometry);
 
 		// PathPlanner named commands
 		AutoCommands.registerAll(m_robotDrive, m_superstructure);

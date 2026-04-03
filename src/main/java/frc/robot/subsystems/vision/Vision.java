@@ -29,7 +29,9 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
+import edu.wpi.first.wpilibj.DriverStation;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -58,6 +60,13 @@ public class Vision extends SubsystemBase {
   
   /** Callback to send accepted vision measurements to the drive subsystem */
   private final VisionConsumer consumer;
+
+  /**
+   * Hard-reset callback for multi-tag poses seen while disabled.
+   * Called with resetOdometry instead of addVisionMeasurement so the gyro-wrong
+   * heading is fully overwritten before the match starts. Null = disabled.
+   */
+  private Consumer<Pose2d> poseResetConsumer = null;
 
   /** Supplier for current robot heading from odometry (used to reject flipped vision poses) */
   private final Supplier<Rotation2d> headingSupplier;
@@ -98,6 +107,15 @@ public class Vision extends SubsystemBase {
           new Alert(
               "Vision camera " + Integer.toString(i) + " is disconnected.", AlertType.kWarning);
     }
+  }
+
+  /**
+   * Sets a callback that hard-resets odometry from multi-tag vision poses while the
+   * robot is disabled. Wire this to {@code SwerveSubsystem::resetOdometry} so the
+   * robot enters the match with the correct heading even if the gyro started wrong.
+   */
+  public void setPoseResetConsumer(Consumer<Pose2d> consumer) {
+    this.poseResetConsumer = consumer;
   }
 
   /**
@@ -226,11 +244,25 @@ public class Vision extends SubsystemBase {
         }
 
         // === SEND TO DRIVE SUBSYSTEM ===
-        // The consumer callback sends this observation to the pose estimator
-        consumer.accept(
-            observation.pose().toPose2d(), // Convert 3D pose to 2D (X, Y, rotation)
-            observation.timestamp(),        // When the image was captured
-            VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev)); // [X, Y, theta] std devs
+        Pose2d pose2d = observation.pose().toPose2d();
+        boolean isUnambiguousSingleTag =
+            observation.tagCount() == 1 && observation.ambiguity() < 0.1;
+        boolean isDisabledHardReset =
+            DriverStation.isDisabled()
+            && poseResetConsumer != null
+            && (observation.tagCount() >= 2 || isUnambiguousSingleTag);
+        if (isDisabledHardReset) {
+          // While disabled, hard-reset odometry from any reliable observation so the
+          // correct heading is established before the match starts. Multi-tag is always
+          // accepted; single-tag is only accepted when ambiguity < 0.1 (near-zero
+          // chance of the 180° flip that the normal filter guards against).
+          poseResetConsumer.accept(pose2d);
+        } else {
+          consumer.accept(
+              pose2d,
+              observation.timestamp(),
+              VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev));
+        }
       }
 
     // === LOG PER-CAMERA DATA ===

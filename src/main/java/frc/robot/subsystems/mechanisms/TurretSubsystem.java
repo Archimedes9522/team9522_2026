@@ -297,25 +297,25 @@ public class TurretSubsystem extends SubsystemBase {
    * @return SysId command sequence
    */
   public Command sysId() {
-    final double gearRatio = TurretConstants.kGearRatio;
     final double limitRad = Math.toRadians(MAX_ONE_DIR_FOV - 5); // 75° safety margin
 
     SysIdRoutine routine = new SysIdRoutine(
         new SysIdRoutine.Config(
             Volts.of(0.5).per(Second), // Quasistatic ramp: 0.5 V/s (slow for more data)
             Volts.of(4),               // Dynamic step: 4V
-            Seconds.of(10),            // Timeout
-            (state) -> Logger.recordOutput("Turret/SysIdState", state.toString())
-        ),
+            Seconds.of(10)),           // Timeout
         new SysIdRoutine.Mechanism(
             (voltage) -> spark.setVoltage(voltage.in(Volts)),
             (log) -> {
-              double motorPos = spark.getEncoder().getPosition();   // motor rotations
-              double motorVel = spark.getEncoder().getVelocity();   // motor RPM
+              // YAMS SparkWrapper already applies gear ratio conversion:
+              //   getPosition() → mechanism rotations
+              //   getVelocity() → mechanism rotations per second
+              double mechRot = spark.getEncoder().getPosition();
+              double mechRps = spark.getEncoder().getVelocity();
               log.motor("TurretMotor")
                   .voltage(Volts.of(spark.getAppliedOutput() * spark.getBusVoltage()))
-                  .angularPosition(Radians.of(motorPos / gearRatio * 2.0 * Math.PI))
-                  .angularVelocity(RadiansPerSecond.of(motorVel / gearRatio * 2.0 * Math.PI / 60.0));
+                  .angularPosition(Radians.of(mechRot * 2.0 * Math.PI))
+                  .angularVelocity(RadiansPerSecond.of(mechRps * 2.0 * Math.PI));
             },
             this
         )
@@ -340,12 +340,32 @@ public class TurretSubsystem extends SubsystemBase {
         }),
         Commands.runOnce(motorController::stopClosedLoopController),
         Commands.print("[Turret SysId] Starting — fast CAN frames enabled"),
+
+        // Quasistatic forward
         Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
         routine.quasistatic(SysIdRoutine.Direction.kForward).until(atLimit),
+        // Re-center before next test
+        center().until(() -> Math.abs(turret.getAngle().in(Degrees)) < 5),
+        Commands.runOnce(motorController::stopClosedLoopController),
+        Commands.waitSeconds(0.5),
+
+        // Quasistatic reverse
         Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
         routine.quasistatic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        // Re-center before next test
+        center().until(() -> Math.abs(turret.getAngle().in(Degrees)) < 5),
+        Commands.runOnce(motorController::stopClosedLoopController),
+        Commands.waitSeconds(0.5),
+
+        // Dynamic forward
         Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
         routine.dynamic(SysIdRoutine.Direction.kForward).until(atLimit),
+        // Re-center before next test
+        center().until(() -> Math.abs(turret.getAngle().in(Degrees)) < 5),
+        Commands.runOnce(motorController::stopClosedLoopController),
+        Commands.waitSeconds(0.5),
+
+        // Dynamic reverse
         Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
         routine.dynamic(SysIdRoutine.Direction.kReverse).until(atLimit)
     ).finallyDo(() -> {
