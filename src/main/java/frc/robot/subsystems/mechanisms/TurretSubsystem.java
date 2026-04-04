@@ -340,6 +340,7 @@ public class TurretSubsystem extends SubsystemBase {
         }),
         Commands.runOnce(motorController::stopClosedLoopController),
         Commands.print("[Turret SysId] Starting — fast CAN frames enabled"),
+<<<<<<< Updated upstream
 
         // Quasistatic forward
         Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
@@ -366,6 +367,46 @@ public class TurretSubsystem extends SubsystemBase {
         Commands.waitSeconds(0.5),
 
         // Dynamic reverse
+=======
+        // Test Run 1
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+        
+        // Test Run 2
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+
+        // Test Run 3
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+>>>>>>> Stashed changes
         Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
         routine.dynamic(SysIdRoutine.Direction.kReverse).until(atLimit)
     ).finallyDo(() -> {

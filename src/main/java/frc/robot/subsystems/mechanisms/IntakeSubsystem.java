@@ -15,6 +15,12 @@ import static edu.wpi.first.units.Units.RPM;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+
+import java.util.function.BooleanSupplier;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -281,7 +287,103 @@ public class IntakeSubsystem extends SubsystemBase {
    * @return SysId command sequence
    */
   public Command sysId() {
-    return intakePivot.sysId(Volts.of(4), Volts.of(1).per(Second), Seconds.of(8));
+    final double gearRatio = IntakeConstants.kPivotGearRatio;
+    // We add a safety margin to the hard limits to prevent slamming during SysId
+    final double limitMaxRad = Math.toRadians(IntakeConstants.kPivotHardMaxAngleDeg - 5);
+    final double limitMinRad = Math.toRadians(IntakeConstants.kPivotHardMinAngleDeg + 5);
+
+    SysIdRoutine routine = new SysIdRoutine(
+        new SysIdRoutine.Config(
+            Volts.of(0.5).per(Second), // slow ramp
+            Volts.of(4),               // dynamic step, conservative for gravity arm
+            Seconds.of(10),
+            (state) -> Logger.recordOutput("IntakePivot/SysIdState", state.toString())
+        ),
+        new SysIdRoutine.Mechanism(
+            (voltage) -> pivotMotor.setVoltage(voltage.in(Volts)),
+            (log) -> {
+              double motorPos = pivotMotor.getEncoder().getPosition(); // motor rotations
+              double motorVel = pivotMotor.getEncoder().getVelocity(); // motor RPM
+              log.motor("IntakePivotMotor")
+                  .voltage(Volts.of(pivotMotor.getAppliedOutput() * pivotMotor.getBusVoltage()))
+                  .angularPosition(Radians.of(motorPos / gearRatio * 2.0 * Math.PI))
+                  .angularVelocity(RadiansPerSecond.of(motorVel / gearRatio * 2.0 * Math.PI / 60.0));
+            },
+            this
+        )
+    );
+
+    // Grace period before checking limits
+    final double[] testStartTime = {0};
+    BooleanSupplier atLimit = () -> {
+      if (Timer.getFPGATimestamp() - testStartTime[0] < 0.5) return false;
+      double currentRad = intakePivot.getAngle().in(Radians);
+      return currentRad >= limitMaxRad || currentRad <= limitMinRad;
+    };
+
+    return Commands.sequence(
+        Commands.runOnce(() -> {
+          com.revrobotics.spark.config.SparkFlexConfig sysIdConfig = new com.revrobotics.spark.config.SparkFlexConfig();
+          sysIdConfig.signals
+              .primaryEncoderPositionPeriodMs(5)
+              .primaryEncoderVelocityPeriodMs(5)
+              .appliedOutputPeriodMs(5);
+          pivotMotor.configure(sysIdConfig, com.revrobotics.ResetMode.kNoResetSafeParameters, com.revrobotics.PersistMode.kNoPersistParameters);
+        }),
+        Commands.runOnce(pivotController::stopClosedLoopController),
+        Commands.print("[Intake SysId] Starting — fast CAN frames enabled"),
+        
+        // Test Run 1
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+        
+        // Test Run 2
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+
+        // Test Run 3
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.quasistatic(SysIdRoutine.Direction.kReverse).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kForward).until(atLimit),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> testStartTime[0] = Timer.getFPGATimestamp()),
+        routine.dynamic(SysIdRoutine.Direction.kReverse).until(atLimit)
+    ).finallyDo(() -> {
+      com.revrobotics.spark.config.SparkFlexConfig defaultConfig = new com.revrobotics.spark.config.SparkFlexConfig();
+      defaultConfig.signals
+          .primaryEncoderPositionPeriodMs(20)
+          .primaryEncoderVelocityPeriodMs(20)
+          .appliedOutputPeriodMs(10);
+      pivotMotor.configure(defaultConfig, com.revrobotics.ResetMode.kNoResetSafeParameters, com.revrobotics.PersistMode.kNoPersistParameters);
+
+      pivotController.startClosedLoopController();
+      System.out.println("[Intake SysId] Complete — CAN frames restored");
+    }).withName("IntakePivot.SysId");
   }
 
   // ==================== GETTERS ====================
