@@ -40,7 +40,7 @@ public class ShootOnTheMoveCommand extends Command {
 
   // === HARDENING CONSTANTS ===
   /** Minimum distance for table lookup (meters). Closer shots clamp to this. */
-  private static final double MIN_DISTANCE_M = 2.0;
+  private static final double MIN_DISTANCE_M = 1.5;
   /** Maximum distance for table lookup (meters). Farther shots clamp to this. */
   private static final double MAX_DISTANCE_M = 12.0;
   /** Robot speed below which lead compensation is zeroed (m/s). Prevents jitter when nearly stopped. */
@@ -253,8 +253,9 @@ public class ShootOnTheMoveCommand extends Command {
   }
 
   // meters, seconds (time of flight lookup for lead compensation)
-  // CA26 values: 4.86m=1.5s — extended with linear estimates. Minimum distance is 2.0m (clamped above).
+  // CA26 values: 4.86m=1.5s — extended with linear estimates. Minimum distance is 1.5m (clamped above).
   private static final InterpolatingDoubleTreeMap TIME_OF_FLIGHT_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
+      Map.entry(1.5, 1.0),
       Map.entry(2.0, 1.1),
       Map.entry(3.0, 1.2),
       Map.entry(4.0, 1.35),
@@ -269,8 +270,9 @@ public class ShootOnTheMoveCommand extends Command {
   // Extended with interpolated estimates for longer distances
   // With fixed hood at 55°, flywheel speed is the only trajectory control
   public static final InterpolatingDoubleTreeMap SHOOTING_SPEED_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(2.0, 2700.0),   // CA26 data point
-      Map.entry(3.0, 3000.0),   // CA26 data point
+      Map.entry(1.5, 2800.0),   // Close-range — tune on real robot
+      Map.entry(2.0, 3000.0),   // Bumped up from 2700 (too low at 55° fixed hood)
+      Map.entry(3.0, 3200.0),   // Bumped up from 3000
       Map.entry(4.0, 3300.0),   // CA26 data point
       Map.entry(4.86, 3750.0),  // CA26 data point
       Map.entry(6.0, 4200.0),   // Estimated — needs real tuning
