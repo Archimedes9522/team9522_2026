@@ -208,9 +208,8 @@ public class Vision extends SubsystemBase {
             || observation.pose().getX() < 0.0
             || observation.pose().getX() > aprilTagLayout.getFieldLength()
             || observation.pose().getY() < 0.0
-            || observation.pose().getY() > aprilTagLayout.getFieldWidth();
+            || observation.pose().getY() > aprilTagLayout.getFieldWidth()
 
-<<<<<<< Updated upstream
             // Reject single-tag observations whose heading differs too much from odometry.
             // Single-tag PnP has an inherent 180° ambiguity — the wrong solution sneaks
             // through the ambiguity filter and flips the pose estimator's heading, which
@@ -221,10 +220,9 @@ public class Vision extends SubsystemBase {
                 && Math.abs(
                     observation.pose().toPose2d().getRotation()
                         .minus(headingSupplier.get()).getDegrees()) > maxHeadingError);
-=======
+
         // Count observations for diagnostic logging
         totalObservations++;
->>>>>>> Stashed changes
 
         // Log all poses (for debugging in AdvantageScope)
         robotPoses.add(observation.pose());

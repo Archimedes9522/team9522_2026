@@ -137,6 +137,12 @@ public class VisionConstants {
    */
   public static double maxZError = 0.75;
 
+  /**
+   * Maximum heading difference (degrees) between a single-tag vision pose and odometry.
+   * Single-tag PnP has 180° ambiguity — reject observations whose heading is too far off.
+   */
+  public static double maxHeadingError = 45.0;
+
   // === STANDARD DEVIATION CONFIGURATION ===
   // Standard deviations tell the pose estimator how much to trust vision measurements.
   // Lower values = more trust. These are baselines for 1 tag at 1 meter distance.
