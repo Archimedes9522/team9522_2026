@@ -137,14 +137,11 @@ public class Robot extends LoggedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
-    if (!comingFromAuto) {
-      // Auto already resets the pose via PathPlanner starting position.
-      // For teleop-only matches, reset heading based on alliance so field-relative
-      // drive works correctly without requiring the driver to press the zero button.
-      // Assumes robot is placed with front facing away from the driver station.
-      edu.wpi.first.wpilibj.DriverStation.getAlliance().ifPresent(
-          alliance -> m_robotContainer.m_robotDrive.resetHeadingForAlliance(alliance));
-    }
+    // Pose is established by vision hard-reset while disabled (from AprilTags).
+    // For PathPlanner autos, the starting pose is also set by PathPlanner.
+    // Do NOT reset heading here — it overwrites the correct vision pose with
+    // (currentX, currentY, allianceHeading), which is wrong if the robot isn't
+    // facing directly away from the driver station.
     if (!isReal() && !comingFromAuto) {
       m_robotContainer.resetSimPoseForAlliance();
     }

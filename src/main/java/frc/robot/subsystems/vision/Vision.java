@@ -181,6 +181,13 @@ public class Vision extends SubsystemBase {
         
         // === POSE REJECTION FILTERS ===
         // These catch obviously bad pose estimates before they corrupt odometry
+        // While disabled with the hard-reset consumer wired, skip the heading
+        // filter — the whole point of the hard reset is to fix a wrong heading.
+        // Without this, Red-alliance boots at (0,0,180°) and the 45° heading
+        // gate rejects every single-tag observation, so the pose never corrects.
+        boolean disabledResetActive =
+            DriverStation.isDisabled() && poseResetConsumer != null;
+
         boolean rejectPose =
             // Must see at least one tag
             observation.tagCount() == 0
@@ -204,7 +211,9 @@ public class Vision extends SubsystemBase {
             // Single-tag PnP has an inherent 180° ambiguity — the wrong solution sneaks
             // through the ambiguity filter and flips the pose estimator's heading, which
             // inverts field-relative driving for the driver.
-            || (observation.tagCount() == 1
+            // Skipped while disabled so the hard-reset can correct the initial pose.
+            || (!disabledResetActive
+                && observation.tagCount() == 1
                 && Math.abs(
                     observation.pose().toPose2d().getRotation()
                         .minus(headingSupplier.get()).getDegrees()) > maxHeadingError);

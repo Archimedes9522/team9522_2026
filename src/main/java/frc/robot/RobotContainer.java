@@ -237,7 +237,7 @@ public class RobotContainer {
 		}
 	}
 
-	/** Updates alliance state, resets aim point and heading. */
+	/** Updates alliance state and aim point. Pose is handled by vision hard-reset while disabled. */
 	private void onAllianceChanged(Alliance alliance) {
 		System.out.println("[Alliance] Changed: " + currentAlliance + " -> " + alliance);
 		currentAlliance = alliance;
@@ -249,15 +249,15 @@ public class RobotContainer {
 							: FieldConstants.AimPoints.RED_HUB.value);
 		}
 
-		if (DriverStation.isDisabled()) {
-			if (!Robot.isReal()) {
-				Pose2d newPose = (alliance == Alliance.Blue)
-						? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))
-						: new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));
-				m_robotDrive.resetOdometry(newPose);
-			} else {
-				m_robotDrive.resetHeadingForAlliance(alliance);
-			}
+		// Sim: hard-set a known pose so sim testing works without cameras.
+		// Real: do NOT reset heading here — vision hard-reset (in Vision.java) sets the
+		// correct pose from AprilTags while disabled. Resetting heading here would
+		// overwrite vision's correct pose with a wrong one (translation stays at 0,0).
+		if (DriverStation.isDisabled() && !Robot.isReal()) {
+			Pose2d newPose = (alliance == Alliance.Blue)
+					? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))
+					: new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));
+			m_robotDrive.resetOdometry(newPose);
 		}
 	}
 }
