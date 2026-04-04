@@ -152,6 +152,9 @@ public class Vision extends SubsystemBase {
     List<Pose3d> allRobotPoses = new LinkedList<>();
     List<Pose3d> allRobotPosesAccepted = new LinkedList<>();
     List<Pose3d> allRobotPosesRejected = new LinkedList<>();
+    int totalObservations = 0;
+    int totalAccepted = 0;
+    int totalRejected = 0;
 
     // === PROCESS EACH CAMERA ===
     boolean anyCameraConnected = false;
@@ -205,8 +208,9 @@ public class Vision extends SubsystemBase {
             || observation.pose().getX() < 0.0
             || observation.pose().getX() > aprilTagLayout.getFieldLength()
             || observation.pose().getY() < 0.0
-            || observation.pose().getY() > aprilTagLayout.getFieldWidth()
+            || observation.pose().getY() > aprilTagLayout.getFieldWidth();
 
+<<<<<<< Updated upstream
             // Reject single-tag observations whose heading differs too much from odometry.
             // Single-tag PnP has an inherent 180° ambiguity — the wrong solution sneaks
             // through the ambiguity filter and flips the pose estimator's heading, which
@@ -217,13 +221,19 @@ public class Vision extends SubsystemBase {
                 && Math.abs(
                     observation.pose().toPose2d().getRotation()
                         .minus(headingSupplier.get()).getDegrees()) > maxHeadingError);
+=======
+        // Count observations for diagnostic logging
+        totalObservations++;
+>>>>>>> Stashed changes
 
         // Log all poses (for debugging in AdvantageScope)
         robotPoses.add(observation.pose());
         if (rejectPose) {
           robotPosesRejected.add(observation.pose());
+          totalRejected++;
         } else {
           robotPosesAccepted.add(observation.pose());
+          totalAccepted++;
         }
 
         // Skip rejected poses
@@ -316,6 +326,11 @@ public class Vision extends SubsystemBase {
       "Vision/Summary/RobotPosesRejected",
       allRobotPosesRejected.toArray(new Pose3d[allRobotPosesRejected.size()]));
   }
+
+    // === DIAGNOSTIC COUNTERS (always on) ===
+    Logger.recordOutput("Vision/ObservationsTotal", totalObservations);
+    Logger.recordOutput("Vision/ObservationsAccepted", totalAccepted);
+    Logger.recordOutput("Vision/ObservationsRejected", totalRejected);
 
     // === SMARTDASHBOARD STATUS ===
     SmartDashboard.putBoolean("Vision Connected", anyCameraConnected);

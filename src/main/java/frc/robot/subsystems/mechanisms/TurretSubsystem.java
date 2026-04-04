@@ -156,7 +156,7 @@ public class TurretSubsystem extends SubsystemBase {
         .withIdleMode(MotorMode.COAST)
         .withSoftLimit(Degrees.of(-MAX_ONE_DIR_FOV), Degrees.of(MAX_ONE_DIR_FOV))
         .withStatorCurrentLimit(Amps.of(TurretConstants.kCurrentLimitAmps))
-        .withClosedLoopRampRate(Seconds.of(0.02))
+        .withClosedLoopRampRate(Seconds.of(0.04))
         .withOpenLoopRampRate(Seconds.of(0.05));
 
     motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
@@ -297,6 +297,7 @@ public class TurretSubsystem extends SubsystemBase {
    * @return SysId command sequence
    */
   public Command sysId() {
+    final double gearRatio = TurretConstants.kGearRatio;
     final double limitRad = Math.toRadians(MAX_ONE_DIR_FOV - 5); // 75° safety margin
 
     SysIdRoutine routine = new SysIdRoutine(
@@ -307,15 +308,12 @@ public class TurretSubsystem extends SubsystemBase {
         new SysIdRoutine.Mechanism(
             (voltage) -> spark.setVoltage(voltage.in(Volts)),
             (log) -> {
-              // YAMS SparkWrapper already applies gear ratio conversion:
-              //   getPosition() → mechanism rotations
-              //   getVelocity() → mechanism rotations per second
-              double mechRot = spark.getEncoder().getPosition();
-              double mechRps = spark.getEncoder().getVelocity();
+              double motorPos = spark.getEncoder().getPosition();   // motor rotations
+              double motorVel = spark.getEncoder().getVelocity();   // motor RPM
               log.motor("TurretMotor")
                   .voltage(Volts.of(spark.getAppliedOutput() * spark.getBusVoltage()))
-                  .angularPosition(Radians.of(mechRot * 2.0 * Math.PI))
-                  .angularVelocity(RadiansPerSecond.of(mechRps * 2.0 * Math.PI));
+                  .angularPosition(Radians.of(motorPos / gearRatio * 2.0 * Math.PI))
+                  .angularVelocity(RadiansPerSecond.of(motorVel / gearRatio * 2.0 * Math.PI / 60.0));
             },
             this
         )
