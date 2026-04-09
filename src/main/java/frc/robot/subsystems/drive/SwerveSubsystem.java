@@ -39,6 +39,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.AutoConstants;
+import frc.robot.subsystems.vision.VisionConstants;
 import swervelib.SwerveInputStream;
 import swervelib.SwerveDrive;
 import swervelib.SwerveModule;
@@ -442,5 +443,11 @@ public class SwerveSubsystem extends SubsystemBase {
   public void periodic() {
     Logger.recordOutput("Odometry/Robot", getPose());
     Logger.recordOutput("Odometry/Heading", getHeading());
+
+    // Log camera field poses for 3D visualization in AdvantageScope
+    Pose3d robotPose3d = getPose3d();
+    Logger.recordOutput("Vision/CameraPoses", new Pose3d[] {
+        robotPose3d.transformBy(VisionConstants.robotToCamera0)
+    });
   }
 }

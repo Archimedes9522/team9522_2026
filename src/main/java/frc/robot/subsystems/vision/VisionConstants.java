@@ -91,7 +91,7 @@ public class VisionConstants {
           Units.inchesToMeters(11.919),   // Z: 11.919 inches up from floor
           new Rotation3d(
               0.0,                              // Roll: 0 (camera is level side-to-side)
-              Units.degreesToRadians(21),       // Pitch: +21° (tilted UP 21 degrees)
+              Units.degreesToRadians(-21),       // Pitch: +21° (tilted UP 21 degrees)
               Math.PI));                        // Yaw: π (180°, facing backward)
 
   /**
@@ -149,7 +149,7 @@ public class VisionConstants {
   // Actual std devs are scaled based on distance and number of tags seen.
   
   /** Baseline XY position uncertainty in meters (for 1 tag at 1 meter) */
-  public static double linearStdDevBaseline = 0.04;
+  public static double linearStdDevBaseline = 0.10;
   
   /**
    * Baseline rotation uncertainty in radians (for 1 tag at 1 meter).
@@ -157,13 +157,13 @@ public class VisionConstants {
    * correct heading drift. Too high and vision can never fix a wrong heading;
    * too low and latency makes field-relative driving feel sluggish.
    */
-  public static double angularStdDevBaseline = 0.2;
+  public static double angularStdDevBaseline = 0.7;
 
     /**
      * Enable verbose per-camera and summary pose logging in Vision.
      * Disable to reduce log size and NT bandwidth when not actively tuning vision.
      */
-    public static boolean kVerboseVisionLogs = false;
+    public static boolean kVerboseVisionLogs = true;
 
   /**
    * Per-camera trust multipliers.
