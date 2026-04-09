@@ -34,7 +34,19 @@
       "Bash(/c/Users/Public/wpilib/2026/jdk/bin/jar.exe xf \"/c/Users/Owner/.gradle/caches/modules-2/files-2.1/swervelib/YAGSL-java/2026.3.12/8723fc1d15e0b409cb1f96c21e8dde7234cfc349/YAGSL-java-2026.3.12-sources.jar\" swervelib/SwerveInputStream.java swervelib/SwerveDrive.java)",
       "Bash(JAVA_HOME=\"C:/Users/Public/wpilib/2026/jdk\" ./gradlew build)",
       "Read(//c/team9522_2025//**)",
-      "Read(//c/team9522_2025/**)"
+      "Read(//c/team9522_2025/**)",
+      "Bash(unzip -q \"/c/Users/Decla/.gradle/caches/modules-2/files-2.1/swervelib/YAGSL-java/2026.3.12/8723fc1d15e0b409cb1f96c21e8dde7234cfc349/YAGSL-java-2026.3.12-sources.jar\")",
+      "Bash(find /tmp -path *swervelib* -name *MaxSwerve* -o -path *swervelib* -name *ModuleType*)",
+      "Bash(find /tmp/swervelib -name *.java -type f)",
+      "Bash(xargs grep:*)",
+      "Bash(python3:*)",
+      "Bash(grep -r \"module.*type\\\\|MAXSWERVE\\\\|MAXSwerve\" /tmp/swervelib --include=*.java)",
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "mcp__claude_ai_Context7__query-docs",
+      "WebSearch",
+      "WebFetch(domain:www.revrobotics.com)",
+      "Bash(find /tmp/swervelib -type f -name *.java -exec grep -l \"enum.*Module\\\\|public.*static.*final.*String\" {})",
+      "Bash(2)"
     ],
     "model": "opus",
     "fastMode": true

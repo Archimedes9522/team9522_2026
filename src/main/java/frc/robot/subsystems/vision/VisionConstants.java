@@ -71,7 +71,7 @@ public class VisionConstants {
   //
   // Rotation order: Roll, Pitch, Yaw
   //   Roll: rotation around X (forward) axis
-  //   Pitch: rotation around Y (left) axis - POSITIVE = camera tilted UP
+  //   Pitch: rotation around Y (left) axis - NEGATIVE = tilted UP, POSITIVE = tilted DOWN
   //   Yaw: rotation around Z (up) axis - 0 = forward, π = backward
   
   /**
@@ -91,7 +91,7 @@ public class VisionConstants {
           Units.inchesToMeters(11.919),   // Z: 11.919 inches up from floor
           new Rotation3d(
               0.0,                              // Roll: 0 (camera is level side-to-side)
-              Units.degreesToRadians(-21),       // Pitch: +21° (tilted UP 21 degrees)
+              Units.degreesToRadians(-21),       // Pitch: -21° = tilted UP 21 degrees (negative = up)
               Math.PI));                        // Yaw: π (180°, facing backward)
 
   /**
@@ -149,7 +149,7 @@ public class VisionConstants {
   // Actual std devs are scaled based on distance and number of tags seen.
   
   /** Baseline XY position uncertainty in meters (for 1 tag at 1 meter) */
-  public static double linearStdDevBaseline = 0.10;
+  public static double linearStdDevBaseline = 0.35;
   
   /**
    * Baseline rotation uncertainty in radians (for 1 tag at 1 meter).

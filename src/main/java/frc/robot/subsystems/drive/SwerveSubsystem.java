@@ -443,6 +443,7 @@ public class SwerveSubsystem extends SubsystemBase {
   public void periodic() {
     Logger.recordOutput("Odometry/Robot", getPose());
     Logger.recordOutput("Odometry/Heading", getHeading());
+    Logger.recordOutput("Swerve/ModuleStates", getModuleStates());
 
     // Log camera field poses for 3D visualization in AdvantageScope
     Pose3d robotPose3d = getPose3d();

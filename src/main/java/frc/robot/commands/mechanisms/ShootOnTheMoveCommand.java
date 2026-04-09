@@ -253,17 +253,19 @@ public class ShootOnTheMoveCommand extends Command {
   }
 
   // meters, seconds (time of flight lookup for lead compensation)
-  // CA26 values: 4.86m=1.5s — extended with linear estimates. Minimum distance is 1.5m (clamped above).
+  // Estimated from projectile physics at 55° fixed hood angle.
+  // At 3000 RPM / 4" wheel: ~16 m/s exit, ~9 m/s horizontal component.
+  // TUNE THESE on the real robot — measure actual flight times!
   private static final InterpolatingDoubleTreeMap TIME_OF_FLIGHT_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(1.5, 1.0),
-      Map.entry(2.0, 1.1),
-      Map.entry(3.0, 1.2),
-      Map.entry(4.0, 1.35),
-      Map.entry(4.86, 1.5),
-      Map.entry(6.0, 1.65),
-      Map.entry(8.0, 1.85),
-      Map.entry(10.0, 2.0),
-      Map.entry(12.0, 2.2));
+      Map.entry(1.5, 0.15),
+      Map.entry(2.0, 0.20),
+      Map.entry(3.0, 0.28),
+      Map.entry(4.0, 0.35),
+      Map.entry(5.0, 0.42),
+      Map.entry(6.0, 0.50),
+      Map.entry(8.0, 0.65),
+      Map.entry(10.0, 0.80),
+      Map.entry(12.0, 0.95));
 
   // meters, RPM (shooter speed lookup - TUNE THESE on the real robot!)
   // Based on CA26 values: 2m=2700, 3m=3000, 4m=3300, 4.86m=3750 RPM
