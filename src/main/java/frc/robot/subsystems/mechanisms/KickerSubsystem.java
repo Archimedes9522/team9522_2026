@@ -109,6 +109,13 @@ public class KickerSubsystem extends SubsystemBase {
     return kicker.set(0).withName("Kicker.Stop");
   }
 
+  /**
+   * Directly sets the kicker duty cycle. Used by Superstructure for ramp sequences.
+   */
+  public void setDutyCycle(double dutyCycle) {
+    motorController.setDutyCycle(dutyCycle);
+  }
+
   // ==================== PERIODIC ====================
 
   @Override

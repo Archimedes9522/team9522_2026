@@ -119,6 +119,9 @@ public class Robot extends LoggedRobot {
   @Override
   public void autonomousInit() {
     comingFromAuto = true;
+    // Reset odometry to set starting pose — alliance is known by now from FMS.
+    // Robot must be placed facing downfield (away from driver station).
+    m_robotContainer.m_robotDrive.resetOdometry(m_robotContainer.getStartingPoseForAlliance());
     if (m_robotContainer.getSuperstructure() != null) {
       m_robotContainer.getSuperstructure().updateAimPointForAlliance();
     }
@@ -137,13 +140,11 @@ public class Robot extends LoggedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
-    // Pose is established by vision hard-reset while disabled (from AprilTags).
-    // For PathPlanner autos, the starting pose is also set by PathPlanner.
-    // Do NOT reset heading here — it overwrites the correct vision pose with
-    // (currentX, currentY, allianceHeading), which is wrong if the robot isn't
-    // facing directly away from the driver station.
-    if (!isReal() && !comingFromAuto) {
-      m_robotContainer.resetSimPoseForAlliance();
+    // Vision disabled — reset heading at teleop start since alliance is now known from FMS.
+    // Only reset if NOT coming from auto (auto already set the pose, and the robot may
+    // have moved during auto so we don't want to overwrite the current position).
+    if (!comingFromAuto) {
+      m_robotContainer.m_robotDrive.resetOdometry(m_robotContainer.getStartingPoseForAlliance());
     }
     comingFromAuto = false;
   }

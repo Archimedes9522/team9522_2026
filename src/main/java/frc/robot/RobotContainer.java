@@ -86,17 +86,36 @@ public class RobotContainer {
 			m_superstructure = null;
 		}
 
-		// Vision DISABLED — using odometry-only with set starting position.
-		// Robot always starts facing downfield (toward field center).
-		// To re-enable, restore VisionIOPhotonVision / VisionIOPhotonVisionSim here.
-		m_vision = new Vision(
-				m_robotDrive::addVisionMeasurement,
-				m_robotDrive::getRotation,
-				new VisionIO() {},
-				new VisionIO() {});
+		// Vision re-enabled with tightened filters (VisionConstants).
+		// autonomousInit/teleopInit reset heading as fallback for odometry-only starts.
+		switch (Constants.currentMode) {
+			case REAL:
+				m_vision = new Vision(
+						m_robotDrive::addVisionMeasurement,
+						m_robotDrive::getRotation,
+						new VisionIOPhotonVision(camera0Name, robotToCamera0),
+						new VisionIO() {});
+				break;
+			case SIM:
+				m_vision = new Vision(
+						m_robotDrive::addVisionMeasurement,
+						m_robotDrive::getRotation,
+						new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, m_robotDrive::getPose),
+						new VisionIO() {});
+				break;
+			default:
+				m_vision = new Vision(
+						m_robotDrive::addVisionMeasurement,
+						m_robotDrive::getRotation,
+						new VisionIO() {},
+						new VisionIO() {});
+				break;
+		}
+		// While disabled, hard-reset odometry from multi-tag vision so the heading
+		// is correct before the match starts regardless of which way the robot is facing.
+		m_vision.setPoseResetConsumer(m_robotDrive::resetOdometry);
 
-		// Reset odometry to set starting pose (front facing downfield).
-		// Alliance-relative controls handle flipping automatically.
+		// Fallback: reset odometry to set starting pose (in case vision doesn't get a fix).
 		m_robotDrive.resetOdometry(getStartingPoseForAlliance());
 
 		// PathPlanner named commands

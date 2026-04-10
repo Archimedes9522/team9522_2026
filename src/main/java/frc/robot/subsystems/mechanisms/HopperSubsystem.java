@@ -110,6 +110,13 @@ public class HopperSubsystem extends SubsystemBase {
     return hopper.set(0).withName("Hopper.Stop");
   }
 
+  /**
+   * Directly sets the hopper duty cycle. Used by Superstructure for ramp sequences.
+   */
+  public void setDutyCycle(double dutyCycle) {
+    motorController.setDutyCycle(dutyCycle);
+  }
+
   // ==================== PERIODIC ====================
 
   @Override

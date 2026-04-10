@@ -259,21 +259,43 @@ public class Superstructure extends SubsystemBase {
 
   /**
    * Runs hopper and kicker to feed balls to shooter.
+   * Includes a brief reverse pulse to decompress fuel before ramping up,
+   * preventing motor stalls when fuel is tightly packed.
    */
   public Command feedAllCommand() {
-    return Commands.parallel(
-        hopper.feedCommand().asProxy(),
-        kicker.feedCommand().asProxy())
+    return Commands.sequence(
+        // 1. Brief reverse pulse to decompress fuel
+        Commands.runOnce(() -> {
+          hopper.setDutyCycle(Constants.HopperConstants.kReverseSpeed);
+          kicker.setDutyCycle(-Constants.KickerConstants.kFeedSpeed);
+        }),
+        Commands.waitSeconds(0.1),
+        // 2. Ramp up at 40% to build momentum
+        Commands.runOnce(() -> {
+          hopper.setDutyCycle(Constants.HopperConstants.kFeedSpeed * 0.4);
+          kicker.setDutyCycle(Constants.KickerConstants.kFeedSpeed * 0.4);
+        }),
+        Commands.waitSeconds(0.1),
+        // 3. Full speed (holds until button released)
+        Commands.parallel(
+            hopper.feedCommand().asProxy(),
+            kicker.feedCommand().asProxy()))
+        .finallyDo(() -> {
+          hopper.setDutyCycle(0);
+          kicker.setDutyCycle(0);
+        })
         .withName("Superstructure.feedAll");
   }
 
   /**
-   * Runs hopper and intake in reverse to unjam.
+   * Runs hopper, kicker, and intake rollers in reverse to unjam.
+   * Intake arm stays in place — only rollers reverse.
    */
   public Command backFeedAllCommand() {
     return Commands.parallel(
         hopper.reverseCommand().asProxy(),
-        intake.deployAndEjectCommand().asProxy())
+        kicker.reverseCommand().asProxy(),
+        intake.ejectCommand().asProxy())
         .withName("Superstructure.backFeedAll");
   }
 

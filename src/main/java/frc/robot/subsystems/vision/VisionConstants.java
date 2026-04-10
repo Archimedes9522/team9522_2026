@@ -128,7 +128,7 @@ public class VisionConstants {
    * Ambiguity measures how confident PhotonVision is in the pose.
    * Lower = stricter filtering. Range: 0.0 (perfect) to 1.0 (very uncertain)
    */
-  public static double maxAmbiguity = 0.15;
+  public static double maxAmbiguity = 0.10;
   
   /**
    * Maximum allowable Z-coordinate error in meters.
@@ -149,7 +149,7 @@ public class VisionConstants {
   // Actual std devs are scaled based on distance and number of tags seen.
   
   /** Baseline XY position uncertainty in meters (for 1 tag at 1 meter) */
-  public static double linearStdDevBaseline = 0.35;
+  public static double linearStdDevBaseline = 0.5;
   
   /**
    * Baseline rotation uncertainty in radians (for 1 tag at 1 meter).
@@ -157,7 +157,7 @@ public class VisionConstants {
    * correct heading drift. Too high and vision can never fix a wrong heading;
    * too low and latency makes field-relative driving feel sluggish.
    */
-  public static double angularStdDevBaseline = 0.7;
+  public static double angularStdDevBaseline = 1.0;
 
     /**
      * Enable verbose per-camera and summary pose logging in Vision.
