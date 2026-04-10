@@ -58,7 +58,7 @@ public class VisionConstants {
    * This is reserved for future expansion if you add a second camera.
    * Currently disabled in RobotContainer (uses empty VisionIO).
    */
-  public static String camera1Name = "front_camera";
+  public static String camera1Name = "right_camera";
 
   // === ROBOT TO CAMERA TRANSFORMS ===
   // These describe where each camera is mounted relative to robot center.
@@ -86,39 +86,33 @@ public class VisionConstants {
    */
   public static Transform3d robotToCamera0 =
       new Transform3d(
-          Units.inchesToMeters(-9.464),   // X: 9.464 inches behind robot center
-          Units.inchesToMeters(12.855),   // Y: 12.855 inches LEFT of center (positive = left)
-          Units.inchesToMeters(11.919),   // Z: 11.919 inches up from floor
+          Units.inchesToMeters(-12.25),   // X: 12.25 inches behind robot center
+          Units.inchesToMeters(9.25),     // Y: 9.25 inches LEFT of center (positive = left)
+          Units.inchesToMeters(10.75),    // Z: 10.75 inches up from floor
           new Rotation3d(
               0.0,                              // Roll: 0 (camera is level side-to-side)
               Units.degreesToRadians(-21),       // Pitch: -21° = tilted UP 21 degrees (negative = up)
               Math.PI));                        // Yaw: π (180°, facing backward)
 
   /**
-   * Secondary camera (Raspberry Pi 5) - OPTIONAL, disabled by default.
-   * 
-   * If you add a second camera later, consider mounting it on the FRONT
-   * facing forward to see AprilTags when approaching targets.
-   * 
-   * Suggested front-mount position:
-   * - X: +12 inches (front of robot)
-   * - Y: 0 inches (centered)
-   * - Z: 14 inches (elevated)
-   * - Pitch: -20° (tilted down to see floor-level tags)
-   * - Yaw: 0° (facing forward)
-   * 
-   * CURRENTLY NOT USED - keeping for future expansion.
-   * To enable: Update RobotContainer to use VisionIOPhotonVision for camera1.
+   * Secondary camera - Back-right, facing directly right, level.
+   *
+   * Mounting position (MEASURE AND UPDATE):
+   * - X: -8 in (behind robot center) — UPDATE with actual measurement
+   * - Y: -12 in (right of center) — UPDATE with actual measurement
+   * - Z: 5.25 in (above floor)
+   * - Pitch: 0° (level)
+   * - Yaw: -π/2 (-90°, facing right)
    */
   public static Transform3d robotToCamera1 =
       new Transform3d(
-          Units.inchesToMeters(12),  // X: 12 inches FORWARD from robot center
-          Units.inchesToMeters(0),   // Y: Centered
-          Units.inchesToMeters(14),  // Z: 14 inches up from floor
+          Units.inchesToMeters(-5), // X: 4.125 inches behind robot center
+          Units.inchesToMeters(-4.5),  // Y: 4.5 inches RIGHT of center (negative = right)
+          Units.inchesToMeters(5.25),  // Z: 5.25 inches up from floor
           new Rotation3d(
-              0.0,                              // Roll: 0
-              Units.degreesToRadians(-20),      // Pitch: -20° (tilted DOWN)
-              0.0));                            // Yaw: 0 (facing FORWARD)
+              0.0,                              // Roll: 0 (camera is level side-to-side)
+              0.0,                              // Pitch: 0° (level, not tilted)
+              -Math.PI / 2));                   // Yaw: -π/2 (-90°, facing RIGHT)
 
   // === POSE FILTERING THRESHOLDS ===
   // These help filter out bad pose estimates from the cameras

@@ -139,6 +139,12 @@ public class DriverControls {
       controller.b().onTrue(drivetrain.zeroHeadingForAllianceCommand());
     }
 
+    // Back button: flip heading 180° (invert alliance controls)
+    if (Robot.isReal()) {
+      controller.back()
+          .onTrue(drivetrain.flipHeadingCommand());
+    }
+
     // Simulation bindings
     if (Robot.isSimulation() && superstructure != null) {
       controller.back().whileTrue(

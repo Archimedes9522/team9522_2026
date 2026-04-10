@@ -319,6 +319,20 @@ public class SwerveSubsystem extends SubsystemBase {
     }).withName("SwerveSubsystem.zeroHeadingForAlliance");
   }
 
+  /**
+   * Flips the heading 180° to invert field-relative controls.
+   * Use when alliance detection is wrong or controls feel backwards.
+   */
+  public Command flipHeadingCommand() {
+    return this.runOnce(() -> {
+      Rotation2d current = getPose().getRotation();
+      Rotation2d flipped = current.rotateBy(Rotation2d.fromDegrees(180));
+      resetOdometry(new Pose2d(getPose().getTranslation(), flipped));
+      System.out.println("[Gyro] Flipped heading 180°: " + current.getDegrees()
+          + "° -> " + flipped.getDegrees() + "°");
+    }).withName("SwerveSubsystem.flipHeading");
+  }
+
   // ==================== Utility ====================
 
   public void resetHeadingForAlliance(Alliance alliance) {
@@ -448,7 +462,8 @@ public class SwerveSubsystem extends SubsystemBase {
     // Log camera field poses for 3D visualization in AdvantageScope
     Pose3d robotPose3d = getPose3d();
     Logger.recordOutput("Vision/CameraPoses", new Pose3d[] {
-        robotPose3d.transformBy(VisionConstants.robotToCamera0)
+        robotPose3d.transformBy(VisionConstants.robotToCamera0),
+        robotPose3d.transformBy(VisionConstants.robotToCamera1)
     });
   }
 }

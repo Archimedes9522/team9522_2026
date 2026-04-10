@@ -94,14 +94,14 @@ public class RobotContainer {
 						m_robotDrive::addVisionMeasurement,
 						m_robotDrive::getRotation,
 						new VisionIOPhotonVision(camera0Name, robotToCamera0),
-						new VisionIO() {});
+						new VisionIOPhotonVision(camera1Name, robotToCamera1));
 				break;
 			case SIM:
 				m_vision = new Vision(
 						m_robotDrive::addVisionMeasurement,
 						m_robotDrive::getRotation,
 						new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, m_robotDrive::getPose),
-						new VisionIO() {});
+						new VisionIOPhotonVisionSim(camera1Name, robotToCamera1, m_robotDrive::getPose));
 				break;
 			default:
 				m_vision = new Vision(
