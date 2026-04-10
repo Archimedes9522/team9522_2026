@@ -106,8 +106,8 @@ public final class Constants {
     // Calibration: center turret at 0°, run "[Calibration] Turret Vernier" auto, copy offsets here.
     public static final int kEncoderAChannel = 0;
     public static final int kEncoderBChannel = 1;
-    public static final double kEncoderAOffset = 0.15505230387630758;
-    public static final double kEncoderBOffset = 0.1861345796533645;
+    public static final double kEncoderAOffset = 0.884638122115953;
+    public static final double kEncoderBOffset = 0.17972560449314012;
 
     public static final double kMaxAngleDegrees = 80.0;
     public static final double kMinAngleDegrees = -80.0;
@@ -118,15 +118,18 @@ public final class Constants {
     public static final double kMaxAccelDegPerSecSq = 1000.0;
 
     // PID (SysId position loop, kD hand-tuned — SysId Kd unreliable due to timestep jitter)
-    public static final double kP = 5.7975;
+    public static final double kP = 0.75;
     public static final double kI = 0.0;
-    public static final double kD = 1.5;
+    public static final double kD = 0.01;
+    /*public static final double kP = 5.7975;
+    public static final double kI = 0.0;
+    public static final double kD = 1.5;*/
 
     // Feedforward from SysId (radians, 2026-04-01)
     public static final double kS = 0.8682;
-    public static final double kV = 2.2943;
-    public static final double kA = 0.65936;
-    public static final double kG = 0.30435; // Horizontal turret — not actively used
+    public static final double kV = 0; //2.2943;
+    public static final double kA = 0; //0.65936;
+    public static final double kG = 0; //0.30435; // Horizontal turret — not actively used
   }
 
   /** Hood: FIXED angle (no motor for first qualifier). */
@@ -151,11 +154,11 @@ public final class Constants {
     public static final double kRollerGearRatio = 4.0;
     public static final double kPivotGearRatio = 5.0 * 5.0 * (60.0 / 18.0); // 83.33:1
 
-    public static final double kDeployedAngleDegrees = 148.0;
+    public static final double kDeployedAngleDegrees = 154.0;
     public static final double kPivotSoftMinAngleDeg = 0.0;
-    public static final double kPivotSoftMaxAngleDeg = 148.0;
+    public static final double kPivotSoftMaxAngleDeg = 154.0;
     public static final double kPivotHardMinAngleDeg = 0.0;
-    public static final double kPivotHardMaxAngleDeg = 153.0;
+    public static final double kPivotHardMaxAngleDeg = 155.0;
     public static final double kStowedAngleDegrees = 0.0;
 
     public static final double kIntakeSpeed = 1.0;

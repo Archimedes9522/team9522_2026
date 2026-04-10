@@ -86,33 +86,18 @@ public class RobotContainer {
 			m_superstructure = null;
 		}
 
-		// Vision (IO pattern for AdvantageKit replay support)
-		switch (Constants.currentMode) {
-			case REAL:
-				m_vision = new Vision(
-						m_robotDrive::addVisionMeasurement,
-						m_robotDrive::getRotation,
-						new VisionIOPhotonVision(camera0Name, robotToCamera0),
-						new VisionIO() {});
-				break;
-			case SIM:
-				m_vision = new Vision(
-						m_robotDrive::addVisionMeasurement,
-						m_robotDrive::getRotation,
-						new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, m_robotDrive::getPose),
-						new VisionIO() {});
-				break;
-			default:
-				m_vision = new Vision(
-						m_robotDrive::addVisionMeasurement,
-						m_robotDrive::getRotation,
-						new VisionIO() {},
-						new VisionIO() {});
-				break;
-		}
-		// While disabled, hard-reset odometry from multi-tag vision so the heading
-		// is correct before the match starts regardless of which way the robot is facing.
-		m_vision.setPoseResetConsumer(m_robotDrive::resetOdometry);
+		// Vision DISABLED — using odometry-only with set starting position.
+		// Robot always starts facing downfield (toward field center).
+		// To re-enable, restore VisionIOPhotonVision / VisionIOPhotonVisionSim here.
+		m_vision = new Vision(
+				m_robotDrive::addVisionMeasurement,
+				m_robotDrive::getRotation,
+				new VisionIO() {},
+				new VisionIO() {});
+
+		// Reset odometry to set starting pose (front facing downfield).
+		// Alliance-relative controls handle flipping automatically.
+		m_robotDrive.resetOdometry(getStartingPoseForAlliance());
 
 		// PathPlanner named commands
 		AutoCommands.registerAll(m_robotDrive, m_superstructure);
@@ -249,15 +234,9 @@ public class RobotContainer {
 							: FieldConstants.AimPoints.RED_HUB.value);
 		}
 
-		// Sim: hard-set a known pose so sim testing works without cameras.
-		// Real: do NOT reset heading here — vision hard-reset (in Vision.java) sets the
-		// correct pose from AprilTags while disabled. Resetting heading here would
-		// overwrite vision's correct pose with a wrong one (translation stays at 0,0).
-		if (DriverStation.isDisabled() && !Robot.isReal()) {
-			Pose2d newPose = (alliance == Alliance.Blue)
-					? new Pose2d(2.75, 4.0, Rotation2d.fromDegrees(0))
-					: new Pose2d(14.25, 4.0, Rotation2d.fromDegrees(180));
-			m_robotDrive.resetOdometry(newPose);
+		// Vision disabled — reset odometry to set starting pose on alliance change.
+		if (DriverStation.isDisabled()) {
+			m_robotDrive.resetOdometry(getStartingPoseForAlliance());
 		}
 	}
 }

@@ -272,13 +272,13 @@ public class ShootOnTheMoveCommand extends Command {
   // Extended with interpolated estimates for longer distances
   // With fixed hood at 55°, flywheel speed is the only trajectory control
   public static final InterpolatingDoubleTreeMap SHOOTING_SPEED_BY_DISTANCE = InterpolatingDoubleTreeMap.ofEntries(
-      Map.entry(1.5, 2800.0),   // Close-range — tune on real robot
-      Map.entry(2.0, 3000.0),   // Bumped up from 2700 (too low at 55° fixed hood)
-      Map.entry(3.0, 3200.0),   // Bumped up from 3000
-      Map.entry(4.0, 3300.0),   // CA26 data point
-      Map.entry(4.86, 3750.0),  // CA26 data point
-      Map.entry(6.0, 4200.0),   // Estimated — needs real tuning
-      Map.entry(8.0, 4800.0),   // Estimated — needs real tuning
-      Map.entry(10.0, 5200.0),  // Estimated — needs real tuning
-      Map.entry(12.0, 5500.0)); // Estimated — needs real tuning
+      Map.entry(1.5, 2500.0),   // Close-range — reduced, was shooting too high
+      Map.entry(2.0, 2700.0),   // Reduced from 3000
+      Map.entry(3.0, 2900.0),   // Reduced from 3200
+      Map.entry(4.0, 3100.0),   // Reduced from 3300
+      Map.entry(4.86, 3450.0),  // Reduced from 3750
+      Map.entry(6.0, 3900.0),   // Reduced from 4200
+      Map.entry(8.0, 4500.0),   // Reduced from 4800
+      Map.entry(10.0, 4900.0),  // Reduced from 5200
+      Map.entry(12.0, 5200.0)); // Reduced from 5500
 }

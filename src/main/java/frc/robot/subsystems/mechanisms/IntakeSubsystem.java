@@ -57,8 +57,8 @@ public class IntakeSubsystem extends SubsystemBase {
 
   // === PIVOT POSITIONS (degrees) ===
   private static final double STOW_ANGLE = IntakeConstants.kStowedAngleDegrees;
-  private static final double FEED_ANGLE = 59;
-  private static final double HOLD_ANGLE = 115;
+  private static final double FEED_ANGLE = 65;
+  private static final double HOLD_ANGLE = 121;
   private static final double DEPLOYED_ANGLE = IntakeConstants.kDeployedAngleDegrees;
 
   // === MOTORS ===

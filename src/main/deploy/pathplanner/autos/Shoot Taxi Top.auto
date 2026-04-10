@@ -20,6 +20,6 @@
     }
   },
   "resetOdom": true,
-  "folder": "Shoot + Taxi",
+  "folder": "Taxi + Shoot",
   "choreoAuto": false
 }
