@@ -88,7 +88,7 @@ public class VisionConstants {
       new Transform3d(
           Units.inchesToMeters(-12.25),   // X: 12.25 inches behind robot center
           Units.inchesToMeters(9.25),     // Y: 9.25 inches LEFT of center (positive = left)
-          Units.inchesToMeters(10.75),    // Z: 10.75 inches up from floor
+          Units.inchesToMeters(13.5),     // Z: 10.75 from chassis bottom + ~2.75 ground clearance = 13.5 inches from floor
           new Rotation3d(
               0.0,                              // Roll: 0 (camera is level side-to-side)
               Units.degreesToRadians(-21),       // Pitch: -21° = tilted UP 21 degrees (negative = up)
@@ -106,9 +106,9 @@ public class VisionConstants {
    */
   public static Transform3d robotToCamera1 =
       new Transform3d(
-          Units.inchesToMeters(-5), // X: 4.125 inches behind robot center
+          Units.inchesToMeters(-4.125), // X: 4.125 inches behind robot center
           Units.inchesToMeters(-4.5),  // Y: 4.5 inches RIGHT of center (negative = right)
-          Units.inchesToMeters(5.25),  // Z: 5.25 inches up from floor
+          Units.inchesToMeters(7.75),  // Z: 5.0 from chassis bottom + ~2.75 ground clearance = 7.75 inches from floor
           new Rotation3d(
               0.0,                              // Roll: 0 (camera is level side-to-side)
               0.0,                              // Pitch: 0° (level, not tilted)
@@ -143,7 +143,7 @@ public class VisionConstants {
   // Actual std devs are scaled based on distance and number of tags seen.
   
   /** Baseline XY position uncertainty in meters (for 1 tag at 1 meter) */
-  public static double linearStdDevBaseline = 0.5;
+  public static double linearStdDevBaseline = 0.1;
   
   /**
    * Baseline rotation uncertainty in radians (for 1 tag at 1 meter).

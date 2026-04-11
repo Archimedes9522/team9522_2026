@@ -1,0 +1,402 @@
+{
+  "hubs": [
+    {
+      "x": -8,
+      "y": -8,
+      "width": 1536,
+      "height": 816,
+      "state": {
+        "sidebar": {
+          "width": 344,
+          "expanded": [
+            "/SmartDashboard/MapleSim/MatchData/Breakdown/blue Alliance",
+            "/SmartDashboard/swerve/advantagescope/currentStates/1/angle",
+            "/SmartDashboard/swerve/advantagescope/currentStates/0/angle",
+            "/SmartDashboard/swerve/advantagescope/currentStates/3",
+            "/SmartDashboard/swerve/advantagescope/currentStates/3/angle",
+            "/SmartDashboard/swerve/modules",
+            "/SmartDashboard/swerve/modules/frontright",
+            "/SmartDashboard/swerve/modules/frontleft",
+            "/SmartDashboard/swerve/modules/backright",
+            "/SmartDashboard/swerve/modules/backleft",
+            "/Mechanisms/Intake/IntakeMotor/rotor",
+            "/Mechanisms/Intake/IntakeMotor/current",
+            "/Mechanisms/Intake/IntakeMotor/motor",
+            "/Mechanisms/Hopper/HopperMotor/mechanism",
+            "/Mechanisms/Hopper/HopperMotor/rotor",
+            "/Mechanisms/Hopper/HopperMotor/current",
+            "/SmartDashboard/Mechanisms/Commands",
+            "/Mechanisms/IntakePivot/IntakePivotMotor",
+            "/Mechanisms/IntakePivot/IntakePivotMotor/rotor",
+            "/Mechanisms/IntakePivot/IntakePivotMotor/mechanism",
+            "/TheThriftyBot",
+            "/TheThriftyBot/CAN_30",
+            "/Mechanisms/Hopper/HopperMotor",
+            "/Mechanisms/Hopper/HopperMotor/motor",
+            "/Mechanisms/IntakePivot",
+            "/Mechanisms/IntakePivot/IntakePivotMotor/closedloop",
+            "/Mechanisms/IntakePivot/IntakePivotMotor/closedloop/setpoint",
+            "/AdvantageKit/RealOutputs/ShootOnTheMove",
+            "/AdvantageKit/RealOutputs/Turret",
+            "/Mechanisms/Turret",
+            "/Mechanisms/Shooter",
+            "/Mechanisms/Turret/TurretMotor",
+            "/Mechanisms/Turret/TurretMotor/mechanism",
+            "/SmartDashboard/Mechanisms",
+            "/SmartDashboard/Mechanisms/Commands/TurretSubsystem",
+            "/SmartDashboard/Mechanisms/Commands/TurretMotor",
+            "/SmartDashboard/Turret",
+            "/SmartDashboard/Turret/mechanism",
+            "/AdvantageKit",
+            "/AdvantageKit/RealOutputs",
+            "/AdvantageKit/RealOutputs/Superstructure",
+            "/AdvantageKit/RealOutputs/FieldSimulation",
+            "/AdvantageKit/RealOutputs/LoggedRobot",
+            "/AdvantageKit/RealOutputs/Logger",
+            "/AdvantageKit/RealOutputs/Odometry",
+            "/AdvantageKit/RealOutputs/Vision",
+            "/photonvision",
+            "/photonvision/back_camera",
+            "/AdvantageKit/Vision",
+            "/AdvantageKit/Vision/Camera0",
+            "/AdvantageKit/Vision/Camera0/TagIds",
+            "/AdvantageKit/Vision/Camera0/PoseObservations",
+            "/AdvantageKit/Vision/Camera0/LatestTargetObservation",
+            "/AdvantageKit/Vision/Camera1",
+            "/AdvantageKit/RealOutputs/PhotonAlerts",
+            "/AdvantageKit/SystemStats",
+            "/Tuning",
+            "/CameraPublisher",
+            "/CameraPublisher/back_camera-processed",
+            "/CameraPublisher/back_camera-raw",
+            "/AdvantageKit/RealOutputs/Superstructure/ShooterPose",
+            "/SmartDashboard",
+            "/Mechanisms",
+            "/AdvantageKit/RealOutputs/ASCalibration",
+            "/AdvantageKit/RealOutputs/Vision/CameraPoses",
+            "/AdvantageKit/RealOutputs/Vision/CameraPoses/0",
+            "/RealOutputs",
+            "/RealOutputs/Odometry",
+            "/RealOutputs/ASCalibration",
+            "/PowerDistribution",
+            "/RealOutputs/Vision",
+            "/RealOutputs/Vision/Camera1",
+            "/RealOutputs/Vision/Summary",
+            "/RealOutputs/Swerve"
+          ]
+        },
+        "tabs": {
+          "selected": 1,
+          "tabs": [
+            {
+              "type": 0,
+              "title": "",
+              "controller": null,
+              "controllerUUID": "ql47zcr1ofhsuuoqsclmd6jpcxwfefcz",
+              "renderer": "",
+              "controlsHeight": 0
+            },
+            {
+              "type": 3,
+              "title": "3D Field",
+              "controller": {
+                "sources": [
+                  {
+                    "type": "gamePiece",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/FieldSimulation/FuelPoses",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "model": "2017 Fuel",
+                      "color": "#ff6600",
+                      "variant": "Fuel"
+                    }
+                  },
+                  {
+                    "type": "trajectory",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/FieldSimulation/Shooter/ProjectileSuccessfulShot",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "color": "#00ff00",
+                      "dimensions": [
+                        0.1,
+                        0.1
+                      ]
+                    }
+                  },
+                  {
+                    "type": "trajectory",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/FieldSimulation/Shooter/ProjectileUnsuccessfulShot",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "color": "#ff0000",
+                      "dimensions": [
+                        0.1,
+                        0.1
+                      ]
+                    }
+                  },
+                  {
+                    "type": "cone",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/Vision/CameraPoses",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "color": "#00ff00",
+                      "position": "center"
+                    }
+                  },
+                  {
+                    "type": "robot",
+                    "logKey": "/RealOutputs/Odometry/Robot",
+                    "logType": "Pose2d",
+                    "visible": true,
+                    "options": {
+                      "model": "2026 CA26"
+                    }
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "/RealOutputs/ASCalibration/FinalComponentPoses",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "trajectory",
+                    "logKey": "/RealOutputs/Vision/Summary/TagPoses",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "color": "#00ff00",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "ghost",
+                    "logKey": "/RealOutputs/Vision/Summary/RobotPosesAccepted",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "model": "2026 CA26",
+                      "color": "#00ff00"
+                    }
+                  },
+                  {
+                    "type": "ghost",
+                    "logKey": "/RealOutputs/Vision/Summary/RobotPosesRejected",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "model": "2026 CA26",
+                      "color": "#ff0000"
+                    }
+                  }
+                ],
+                "game": "FRC:2026 Field"
+              },
+              "controllerUUID": "56hy5kyvd0kjxfyigyn0v5dx374uh50y",
+              "renderer": {
+                "cameraIndex": -1,
+                "orbitFov": 50,
+                "cameraPosition": [
+                  0.9838256105658383,
+                  8.558918515286123,
+                  9.85714836889738
+                ],
+                "cameraTarget": [
+                  3.351301368205495,
+                  -3.5106335190811064,
+                  -4.146367791370795
+                ]
+              },
+              "controlsHeight": 329
+            },
+            {
+              "type": 8,
+              "title": "Joysticks",
+              "controller": [
+                "Logitech F310",
+                "Logitech F310",
+                "None",
+                "None",
+                "None",
+                "None"
+              ],
+              "controllerUUID": "qnpiejfwr32fieybzu6jwxtglkncnmmg",
+              "renderer": null,
+              "controlsHeight": 85
+            },
+            {
+              "type": 9,
+              "title": "Swerve",
+              "controller": {
+                "sources": [
+                  {
+                    "type": "states",
+                    "logKey": "/RealOutputs/Swerve/ModuleStates",
+                    "logType": "SwerveModuleState[]",
+                    "visible": true,
+                    "options": {
+                      "color": "#ff0000",
+                      "arrangement": "0,1,2,3"
+                    }
+                  },
+                  {
+                    "type": "rotationLegacy",
+                    "logKey": "/RealOutputs/Odometry/Heading",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "units": "degrees"
+                    }
+                  }
+                ],
+                "maxSpeed": 5,
+                "sizeX": 0.65,
+                "sizeY": 0.65,
+                "orientation": 1
+              },
+              "controllerUUID": "vegocwnd7mauikcydyv4z5a4n2q09q6c",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 7,
+              "title": "Video",
+              "controller": null,
+              "controllerUUID": "9dm411hus5ui7j21ziii7zg9974l0v9z",
+              "renderer": null,
+              "controlsHeight": 85
+            },
+            {
+              "type": 5,
+              "title": "Console",
+              "controller": "NT:/AdvantageKit/RealOutputs/ShootOnTheMove/VectorToTarget",
+              "controllerUUID": "u08d7lczjd6udgio9en7jjr4rpoz6cfr",
+              "renderer": {
+                "highlight": false
+              },
+              "controlsHeight": 0
+            },
+            {
+              "type": 1,
+              "title": "Line Graph",
+              "controller": {
+                "leftSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/Superstructure/TargetTurretAngle",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/Superstructure/ActualTurretAngle",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [],
+                "discreteSources": [],
+                "leftLockedRange": null,
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "at9a72uj5sbz6zdwqcybqtno9uqe3vmw",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 9,
+              "title": "Swerve",
+              "controller": {
+                "sources": [
+                  {
+                    "type": "states",
+                    "logKey": "NT:/SmartDashboard/swerve/advantagescope/desiredStates",
+                    "logType": "SwerveModuleState[]",
+                    "visible": true,
+                    "options": {
+                      "color": "#0000ff",
+                      "arrangement": "0,1,2,3"
+                    }
+                  },
+                  {
+                    "type": "states",
+                    "logKey": "NT:/SmartDashboard/swerve/advantagescope/currentStates",
+                    "logType": "SwerveModuleState[]",
+                    "visible": true,
+                    "options": {
+                      "color": "#ff0000",
+                      "arrangement": "0,1,2,3"
+                    }
+                  },
+                  {
+                    "type": "rotation",
+                    "logKey": "NT:/SmartDashboard/swerve/advantagescope/robotRotation",
+                    "logType": "Rotation2d",
+                    "visible": true,
+                    "options": {}
+                  }
+                ],
+                "maxSpeed": 5,
+                "sizeX": 0.65,
+                "sizeY": 0.65,
+                "orientation": 3
+              },
+              "controllerUUID": "mbdmekf3z1pwqg286njh7yvk9q6gao06",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 1,
+              "title": "Commands",
+              "controller": {
+                "leftSources": [],
+                "rightSources": [],
+                "discreteSources": [],
+                "leftLockedRange": null,
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "type": null,
+                  "factor": 1
+                },
+                "rightUnitConversion": {
+                  "type": null,
+                  "factor": 1
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "pigoam74jesfb4nbj26dep7viktz08f8",
+              "renderer": null,
+              "controlsHeight": 200
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "satellites": [],
+  "version": "26.0.0"
+}
