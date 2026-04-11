@@ -78,8 +78,8 @@ public final class Constants {
     public static final int kFollowerMotorId = 16;
     public static final double kWheelDiameterInches = 4.0;
     public static final double kGearRatio = 1.0;
-    public static final double kMaxSpeedRpm = 6000;
-    public static final double kShootingSpeedRpm = 5500;
+    public static final double kMaxSpeedRpm = 5000;
+    public static final double kShootingSpeedRpm = 4500;
     public static final double kSpeedToleranceRpm = 100;
     public static final int kCurrentLimitAmps = 40;
 
