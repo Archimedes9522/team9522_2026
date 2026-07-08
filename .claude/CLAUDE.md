@@ -63,7 +63,7 @@ Subsystems that touch hardware use a `IO interface + implementations` pattern:
 
 | Mechanism | Motor | Controller |
 |---|---|---|
-| Turret | NEO | SparkMax + REV Through Bore Encoder (absolute, no separate CAN ID) |
+| Turret | NEO | SparkMax + 2× REV Through Bore Encoders on DIO 0/1 (19t/21t vernier CRT for absolute position) |
 | Shooter (×2) | NEO | SparkMax |
 | Kicker | NEO | SparkMax |
 | Intake Pivot | NEO Vortex | SparkFlex |
@@ -94,7 +94,7 @@ When composing commands from different subsystems inside Superstructure, use `.a
 `AimPoints.getAllianceHubPosition()` returns the correct target based on `DriverStation.getAlliance()`. Zone triggers in RobotContainer auto-switch between hub/outpost/far-side targets.
 
 ### Lead compensation hardening
-`ShootOnTheMoveCommand` uses distance clamping (`[2m, 12m]`), a low-speed lead deadband (0.1 m/s), and turret slew limiting (5 deg/cycle) to prevent jitter.
+`ShootOnTheMoveCommand` uses distance clamping (`[1.5m, 12m]`), a low-speed lead deadband (0.1 m/s), and turret slew limiting (10 deg/cycle) to prevent jitter.
 
 ### Swerve config is JSON-driven
 `src/main/deploy/swerve/` contains all YAGSL module configs. **Do not hardcode swerve parameters in Java.**
@@ -108,7 +108,7 @@ When composing commands from different subsystems inside Superstructure, use `.a
 - **Mass:** 112.39 lbs (50.98 kg) — update `kRobotMassKg` and `physicalproperties.json` after weighing
 - **Wheel COF:** 1.19 (black rubber on carpet), synced in swerve and PathPlanner configs
 - **Turret mounting:** 0° = robot rear (backwards mount)
-- **IMU:** `invertedIMU: true` in `swervedrive.json` — gyro is mounted facing backwards
+- **IMU:** `invertedIMU: false` in `swervedrive.json` (angular velocity compensation coefficient in `SwerveSubsystem` is negative to match)
 
 ---
 
@@ -151,7 +151,7 @@ src/main/
 - [ ] Test and tune PathPlanner auto PID (translation P=5.0, rotation P=5.0)
 - [ ] Tune swerve PIDF values on real robot (current values are YAGSL defaults)
 - [ ] Run SysId characterization for shooter and swerve feedforward
-- [ ] Tune mechanism PIDs on real hardware (Turret P=10 D=0.3, Shooter P=0.00936 from sim)
+- [ ] Tune mechanism PIDs on real hardware (Turret P=4.0 D=0.03 from SysId + hand-tuning, Shooter P=0.00936 from sim)
 - [ ] Tune shooter RPM interpolation table with real-robot shot data
 - [ ] Fine-tune auto paths in PathPlanner GUI — current waypoints are geometry-calculated
 

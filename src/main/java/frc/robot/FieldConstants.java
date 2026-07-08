@@ -61,7 +61,7 @@ public final class FieldConstants {
     public static Translation3d getAllianceHubPosition() {
       return DriverStation.getAlliance()
           .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_HUB.value : BLUE_HUB.value)
-          .orElse(RED_HUB.value);
+          .orElse(BLUE_HUB.value);
     }
 
     /**
@@ -71,7 +71,7 @@ public final class FieldConstants {
     public static Translation3d getAllianceOutpostPosition() {
       return DriverStation.getAlliance()
           .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_OUTPOST.value : BLUE_OUTPOST.value)
-          .orElse(RED_OUTPOST.value);
+          .orElse(BLUE_OUTPOST.value);
     }
 
     /**
@@ -81,7 +81,7 @@ public final class FieldConstants {
     public static Translation3d getAllianceFarSidePosition() {
       return DriverStation.getAlliance()
           .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_FAR_SIDE.value : BLUE_FAR_SIDE.value)
-          .orElse(RED_FAR_SIDE.value);
+          .orElse(BLUE_FAR_SIDE.value);
     }
 
     /**
@@ -91,7 +91,7 @@ public final class FieldConstants {
     public static Translation3d getAllianceStationTopPosition() {
       return DriverStation.getAlliance()
           .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_STATION_TOP.value : BLUE_STATION_TOP.value)
-          .orElse(RED_STATION_TOP.value);
+          .orElse(BLUE_STATION_TOP.value);
     }
 
     /**
@@ -101,7 +101,7 @@ public final class FieldConstants {
     public static Translation3d getAllianceStationBottomPosition() {
       return DriverStation.getAlliance()
           .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_STATION_BOTTOM.value : BLUE_STATION_BOTTOM.value)
-          .orElse(RED_STATION_BOTTOM.value);
+          .orElse(BLUE_STATION_BOTTOM.value);
     }
   }
 }

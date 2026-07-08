@@ -41,7 +41,7 @@ public class RebuiltFuelOnFly extends GamePieceProjectile {
   private static Translation3d getAllianceHub() {
     return DriverStation.getAlliance()
         .map(alliance -> alliance == DriverStation.Alliance.Red ? RED_HUB_POSITION : BLUE_HUB_POSITION)
-        .orElse(RED_HUB_POSITION);
+        .orElse(BLUE_HUB_POSITION); // Blue fallback matches the rest of the codebase
   }
 
   /**

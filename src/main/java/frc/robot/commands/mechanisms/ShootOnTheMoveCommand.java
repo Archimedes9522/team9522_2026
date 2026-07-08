@@ -7,6 +7,7 @@ import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
@@ -106,8 +107,11 @@ public class ShootOnTheMoveCommand extends Command {
     // Log target for debugging
     Logger.recordOutput("ShootOnTheMove/AimTarget", new Pose3d(target, Rotation3d.kZero));
 
-    var shooterLocation = drivetrain.getPose3d().getTranslation()
-        .plus(superstructure.getShooterPose().getTranslation());
+    // Shooter offset is robot-relative; rotate it into the field frame via a
+    // Transform3d before adding (matches RobotContainer.getAimDirection()).
+    var shooterLocation = drivetrain.getPose3d()
+        .plus(new Transform3d(superstructure.getShooterPose().getTranslation(), Rotation3d.kZero))
+        .getTranslation();
 
     var shooterOnGround = new Translation2d(shooterLocation.getX(), shooterLocation.getY());
     var targetOnGround = new Translation2d(target.getX(), target.getY());

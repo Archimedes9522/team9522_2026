@@ -101,8 +101,17 @@ public class OperatorControls {
           SmartDashboard.putBoolean("Auto-Aim Active", autoAimEnabled);
         }));
 
+    // whileTrue only schedules on the trigger's rising edge, so if another
+    // command steals the turret/shooter (manual turret, presets, Y/X), the
+    // auto-aim command dies without restarting. Sync the toggle off whenever
+    // the command ends so the flag and dashboard always reflect reality;
+    // press LB again to re-enable.
     new Trigger(() -> autoAimEnabled)
         .whileTrue(new ShootOnTheMoveCommand(drivetrain, superstructure, superstructure::getAimPoint)
+            .finallyDo(() -> {
+              autoAimEnabled = false;
+              SmartDashboard.putBoolean("Auto-Aim Active", false);
+            })
             .ignoringDisable(true).withName("OperatorControls.autoAim"));
 
     // Auto-RPM fallback (distance-based shooter speed, manual turret)

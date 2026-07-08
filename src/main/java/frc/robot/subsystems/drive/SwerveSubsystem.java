@@ -14,6 +14,7 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.swerve.SwerveSetpoint;
 import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
@@ -40,6 +41,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.subsystems.vision.VisionConstants;
+import frc.robot.util.LocalADStarAK;
 import swervelib.SwerveInputStream;
 import swervelib.SwerveDrive;
 import swervelib.SwerveModule;
@@ -132,6 +134,10 @@ public class SwerveSubsystem extends SubsystemBase {
     } catch (Exception e) {
       e.printStackTrace();
     }
+
+    // AdvantageKit-compatible pathfinder so pathfindToPose is deterministic in
+    // log replay. Without this, PathPlanner silently uses its default LocalADStar.
+    Pathfinding.setPathfinder(new LocalADStarAK());
 
     AutoBuilder.configure(
         this::getPose,

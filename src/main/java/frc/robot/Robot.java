@@ -3,7 +3,6 @@ package frc.robot;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 import com.pathplanner.lib.path.PathPlannerPath;
-import com.studica.frc.AHRS;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -39,8 +38,9 @@ public class Robot extends LoggedRobot {
   private Command m_autonomousCommand;
   private boolean comingFromAuto = false;
 
-  @SuppressWarnings("unused") // Used indirectly by YAGSL via swervedrive.json
-  private final AHRS m_gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
+  // NOTE: Do not construct an AHRS gyro here. YAGSL creates its own AHRS
+  // instance from swervedrive.json (navx_spi); a second instance on the same
+  // SPI bus runs a competing IO thread against the same device.
 
   private RobotContainer m_robotContainer;
   private final Field2d m_field = new Field2d();

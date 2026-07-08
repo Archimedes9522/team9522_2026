@@ -4,7 +4,6 @@
 
 package frc.robot;
 
-import com.pathplanner.lib.config.RobotConfig;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
@@ -49,15 +48,6 @@ public final class Constants {
 
     public static final TrapezoidProfile.Constraints kThetaControllerConstraints = new TrapezoidProfile.Constraints(
         kMaxAngularSpeedRadiansPerSecond, kMaxAngularSpeedRadiansPerSecondSquared);
-
-    public static RobotConfig config;
-    static {
-      try {
-        config = RobotConfig.fromGUISettings();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
   }
 
   public static final class ControllerConstants {
